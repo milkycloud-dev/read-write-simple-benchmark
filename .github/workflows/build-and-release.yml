@@ -33,6 +33,25 @@ jobs:
           Write-Host "Verifying binary at $exePath"
           & $exePath --cli
 
+      - name: Verify Headless UI Screenshot
+        run: |
+          $exePath = "build\Release\rw-benchmark.exe"
+          if (!(Test-Path $exePath)) {
+            $exePath = "build\rw-benchmark.exe"
+          }
+          Write-Host "Rendering offscreen UI screenshot with $exePath"
+          & $exePath --screenshot preview.png
+          if (!(Test-Path preview.png)) {
+            Write-Error "Screenshot file was not generated!"
+            exit 1
+          }
+
+      - name: Upload UI Preview Screenshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-preview
+          path: preview.png
+
       - name: Package Artifact
         run: |
           $exePath = "build\Release\rw-benchmark.exe"
@@ -53,7 +72,9 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: rw-benchmark-windows-x64.zip
+          files: |
+            rw-benchmark-windows-x64.zip
+            preview.png
           name: RW-Bench ${{ github.ref_name }}
           draft: false
           prerelease: false

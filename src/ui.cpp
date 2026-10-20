@@ -82,9 +82,8 @@ bool MainWindow::Create() {
 
     RegisterClassExW(&wc);
 
-    // Compact, balanced window dimensions: 640 x 450 px
     int clientW = 640;
-    int clientH = 450;
+    int clientH = 404;
 
     RECT rc = { 0, 0, clientW, clientH };
     AdjustWindowRectEx(&rc, WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX, FALSE, 0);
@@ -105,13 +104,11 @@ bool MainWindow::Create() {
 
     if (!m_hWnd) return false;
 
-    // Windows 10/11 Immersive Dark Titlebar
     BOOL darkMode = TRUE;
     DwmSetWindowAttribute(m_hWnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &darkMode, sizeof(darkMode));
 
     PopulateDrives();
 
-    // 30 FPS update timer
     SetTimer(m_hWnd, 1001, 33, nullptr);
 
     return true;
@@ -129,12 +126,18 @@ void MainWindow::PopulateDrives() {
     }
 }
 
-int MainWindow::HitTest(int x, int y) const {
+int MainWindow::HitTest(int x, int y, int width) const {
     if (y >= 14 && y <= 44) {
-        if (x >= 236 && x <= 320) return 1; // Mode pill
-        if (x >= 326 && x <= 400) return 2; // Size pill
-        if (x >= 406 && x <= 546) return 3; // Drive pill
-        if (x >= 552 && x <= 624) return 4; // Start/Stop button
+        float r = static_cast<float>(width) - 16.0f;
+        float btnX  = r - 76.0f;
+        float drvX  = btnX - 8.0f - 140.0f;
+        float sizeX = drvX - 8.0f - 76.0f;
+        float modeX = sizeX - 8.0f - 84.0f;
+
+        if (x >= modeX && x <= modeX + 84.0f) return 1; // Mode
+        if (x >= sizeX && x <= sizeX + 76.0f) return 2; // Size
+        if (x >= drvX  && x <= drvX  + 140.0f) return 3; // Drive
+        if (x >= btnX  && x <= btnX  + 76.0f) return 4; // Start/Stop
     }
     return 0;
 }
@@ -148,7 +151,11 @@ void MainWindow::ShowModeMenu() {
     AppendMenuW(hMenu, MF_STRING | (m_selectedMode == 2 ? MF_CHECKED : 0), 2002, L"Sequential Read Only");
     AppendMenuW(hMenu, MF_STRING | (m_selectedMode == 3 ? MF_CHECKED : 0), 2003, L"Random 4K Only");
 
-    POINT pt = { 236, 46 };
+    RECT rc; GetClientRect(m_hWnd, &rc);
+    float r = static_cast<float>(rc.right - rc.left) - 16.0f;
+    int modeX = static_cast<int>(r - 76.0f - 8.0f - 140.0f - 8.0f - 76.0f - 8.0f - 84.0f);
+
+    POINT pt = { modeX, 46 };
     ClientToScreen(m_hWnd, &pt);
 
     int cmd = TrackPopupMenuEx(hMenu, TPM_LEFTALIGN | TPM_TOPALIGN | TPM_RETURNCMD, pt.x, pt.y, m_hWnd, nullptr);
@@ -169,7 +176,11 @@ void MainWindow::ShowSizeMenu() {
     AppendMenuW(hMenu, MF_STRING | (m_selectedSize == 2 ? MF_CHECKED : 0), 2102, L"512 MB");
     AppendMenuW(hMenu, MF_STRING | (m_selectedSize == 3 ? MF_CHECKED : 0), 2103, L"1 GB");
 
-    POINT pt = { 326, 46 };
+    RECT rc; GetClientRect(m_hWnd, &rc);
+    float r = static_cast<float>(rc.right - rc.left) - 16.0f;
+    int sizeX = static_cast<int>(r - 76.0f - 8.0f - 140.0f - 8.0f - 76.0f);
+
+    POINT pt = { sizeX, 46 };
     ClientToScreen(m_hWnd, &pt);
 
     int cmd = TrackPopupMenuEx(hMenu, TPM_LEFTALIGN | TPM_TOPALIGN | TPM_RETURNCMD, pt.x, pt.y, m_hWnd, nullptr);
@@ -196,7 +207,11 @@ void MainWindow::ShowDriveMenu() {
     AppendMenuW(hMenu, MF_SEPARATOR, 0, nullptr);
     AppendMenuW(hMenu, MF_STRING, 1999, L"Browse Custom Folder...");
 
-    POINT pt = { 406, 46 };
+    RECT rc; GetClientRect(m_hWnd, &rc);
+    float r = static_cast<float>(rc.right - rc.left) - 16.0f;
+    int drvX = static_cast<int>(r - 76.0f - 8.0f - 140.0f);
+
+    POINT pt = { drvX, 46 };
     ClientToScreen(m_hWnd, &pt);
 
     int cmd = TrackPopupMenuEx(hMenu, TPM_LEFTALIGN | TPM_TOPALIGN | TPM_RETURNCMD, pt.x, pt.y, m_hWnd, nullptr);
@@ -254,7 +269,6 @@ void MainWindow::HandleStartStop() {
         return;
     }
 
-    // Reset saved histories on start
     m_writeHistory.clear();
     m_readHistory.clear();
 
@@ -334,9 +348,11 @@ LRESULT MainWindow::HandleMessage(UINT msg, WPARAM wParam, LPARAM lParam) {
             return 0;
 
         case WM_LBUTTONDOWN: {
+            RECT rc; GetClientRect(m_hWnd, &rc);
+            int width = rc.right - rc.left;
             int x = GET_X_LPARAM(lParam);
             int y = GET_Y_LPARAM(lParam);
-            int hit = HitTest(x, y);
+            int hit = HitTest(x, y, width);
             LiveStatus s = m_engine.GetStatus();
 
             if (hit == 1) {
@@ -352,9 +368,11 @@ LRESULT MainWindow::HandleMessage(UINT msg, WPARAM wParam, LPARAM lParam) {
         }
 
         case WM_MOUSEMOVE: {
+            RECT rc; GetClientRect(m_hWnd, &rc);
+            int width = rc.right - rc.left;
             int x = GET_X_LPARAM(lParam);
             int y = GET_Y_LPARAM(lParam);
-            int hit = HitTest(x, y);
+            int hit = HitTest(x, y, width);
 
             if (!m_trackingMouse) {
                 TRACKMOUSEEVENT tme = { sizeof(tme) };
@@ -427,6 +445,14 @@ void MainWindow::OnPaint() {
     CreateMemBuffer(width, height);
 
     Graphics g(m_hMemDC);
+    Render(g, width, height);
+
+    HDC hdcScreen = GetDC(m_hWnd);
+    BitBlt(hdcScreen, 0, 0, width, height, m_hMemDC, 0, 0, SRCCOPY);
+    ReleaseDC(m_hWnd, hdcScreen);
+}
+
+void MainWindow::Render(Graphics& g, int width, int height) {
     g.SetSmoothingMode(SmoothingModeAntiAlias);
     g.SetTextRenderingHint(TextRenderingHintClearTypeGridFit);
     g.SetPixelOffsetMode(PixelOffsetModeHalf);
@@ -456,14 +482,13 @@ void MainWindow::OnPaint() {
     SolidBrush brushCyan(colorActiveBlue);
     SolidBrush brushEmerald(colorEmerald);
 
-    // Segoe UI Typefaces
+    // Clean Segoe UI Typography
     Font fontTitle(L"Segoe UI", 12.0f, FontStyleBold, UnitPoint);
-    Font fontSubTitle(L"Segoe UI", 8.5f, FontStyleRegular, UnitPoint);
     Font fontPill(L"Segoe UI", 8.5f, FontStyleBold, UnitPoint);
     Font fontCardTag(L"Segoe UI", 10.0f, FontStyleBold, UnitPoint);
     Font fontCardSub(L"Segoe UI", 7.5f, FontStyleBold, UnitPoint);
-    Font fontHeroSpeed(L"Segoe UI", 32.0f, FontStyleBold, UnitPoint);
-    Font fontHeroUnit(L"Segoe UI", 11.5f, FontStyleBold, UnitPoint);
+    Font fontHeroSpeed(L"Segoe UI", 30.0f, FontStyleBold, UnitPoint);
+    Font fontHeroUnit(L"Segoe UI", 11.0f, FontStyleBold, UnitPoint);
     Font fontHeroStat(L"Segoe UI", 8.0f, FontStyleRegular, UnitPoint);
     Font fontThHeader(L"Segoe UI", 8.0f, FontStyleBold, UnitPoint);
     Font fontRowTitle(L"Segoe UI", 9.5f, FontStyleBold, UnitPoint);
@@ -501,12 +526,18 @@ void MainWindow::OnPaint() {
 
     // ========================================================
     // 1. TOP CONTROL BAR (Y: 14 to 44, Height 30px)
+    // Left: Pure title (no subtitles colliding!). Right: Anchored cluster.
     // ========================================================
     g.DrawString(L"RW-Bench", -1, &fontTitle, PointF(16.0f, 18.0f), &brushWhite);
-    g.DrawString(L"Disk Speed Benchmark", -1, &fontSubTitle, PointF(96.0f, 21.0f), &brushMuted);
 
-    // 1.1 Mode Pill (x: 236..320, w: 84)
-    RectF rMode(236.0f, 14.0f, 84.0f, 30.0f);
+    float rightEdge = static_cast<float>(width) - 16.0f;
+    float btnX  = rightEdge - 76.0f;
+    float drvX  = btnX - 8.0f - 140.0f;
+    float sizeX = drvX - 8.0f - 76.0f;
+    float modeX = sizeX - 8.0f - 84.0f;
+
+    // 1.1 Mode Pill (w: 84)
+    RectF rMode(modeX, 14.0f, 84.0f, 30.0f);
     bool modeHov = (m_hoverId == 1 && !status.isRunning);
     SolidBrush bMode(modeHov ? colorPillHover : colorCard);
     FillRoundedRect(g, bMode, rMode, 5.0f);
@@ -515,8 +546,8 @@ void MainWindow::OnPaint() {
     const wchar_t* modeNames[4] = { L"Full Suite \u25BE", L"Write Only \u25BE", L"Read Only \u25BE", L"4K Only \u25BE" };
     g.DrawString(modeNames[m_selectedMode], -1, &fontPill, rMode, &sfCenter, &brushWhite);
 
-    // 1.2 Size Pill (x: 326..400, w: 74)
-    RectF rSize(326.0f, 14.0f, 74.0f, 30.0f);
+    // 1.2 Size Pill (w: 76)
+    RectF rSize(sizeX, 14.0f, 76.0f, 30.0f);
     bool sizeHov = (m_hoverId == 2 && !status.isRunning);
     SolidBrush bSize(sizeHov ? colorPillHover : colorCard);
     FillRoundedRect(g, bSize, rSize, 5.0f);
@@ -525,8 +556,8 @@ void MainWindow::OnPaint() {
     const wchar_t* sizeNames[4] = { L"128 MB \u25BE", L"256 MB \u25BE", L"512 MB \u25BE", L"1 GB \u25BE" };
     g.DrawString(sizeNames[m_selectedSize], -1, &fontPill, rSize, &sfCenter, &brushWhite);
 
-    // 1.3 Drive Pill (x: 406..546, w: 140)
-    RectF rDrive(406.0f, 14.0f, 140.0f, 30.0f);
+    // 1.3 Drive Pill (w: 140)
+    RectF rDrive(drvX, 14.0f, 140.0f, 30.0f);
     bool driveHov = (m_hoverId == 3 && !status.isRunning);
     SolidBrush bDrive(driveHov ? colorPillHover : colorCard);
     FillRoundedRect(g, bDrive, rDrive, 5.0f);
@@ -536,11 +567,11 @@ void MainWindow::OnPaint() {
     if (!m_drives.empty() && m_selectedDriveIndex >= 0 && m_selectedDriveIndex < static_cast<int>(m_drives.size())) {
         driveShort = m_drives[m_selectedDriveIndex].GetVeryShortName() + L" \u25BE";
     }
-    RectF rDriveText(414.0f, 14.0f, 126.0f, 30.0f);
+    RectF rDriveText(drvX + 8.0f, 14.0f, 124.0f, 30.0f);
     g.DrawString(driveShort.c_str(), -1, &fontPill, rDriveText, &sfLeft, &brushWhite);
 
-    // 1.4 Start / Stop Action Button (x: 552..624, w: 72)
-    RectF rBtn(552.0f, 14.0f, 72.0f, 30.0f);
+    // 1.4 Action Button (w: 76)
+    RectF rBtn(btnX, 14.0f, 76.0f, 30.0f);
     bool btnHov = (m_hoverId == 4);
 
     if (status.isRunning) {
@@ -574,22 +605,24 @@ void MainWindow::OnPaint() {
     bool isReading = status.isRunning && (status.activeTest.find("Read") != std::string::npos);
 
     // ========================================================
-    // 2. DUAL HERO CARDS (Y: 52 to 216, Height 164px)
+    // 2. DUAL HERO CARDS (Y: 50 to 190, Height 140px)
     // Left: WRITE SPEED | Right: READ SPEED
     // ========================================================
-    float cardW = 298.0f;
-    float cardH = 164.0f;
-    float cardY = 52.0f;
+    float contentW = static_cast<float>(width) - 32.0f;
+    float cardW = (contentW - 16.0f) / 2.0f;
+    float cardH = 140.0f;
+    float cardY = 50.0f;
 
     // --------------------------------------------------------
     // 2.1 LEFT CARD: WRITE SPEED
     // --------------------------------------------------------
-    RectF rWriteCard(16.0f, cardY, cardW, cardH);
+    float wCardX = 16.0f;
+    RectF rWriteCard(wCardX, cardY, cardW, cardH);
     FillRoundedRect(g, brushCard, rWriteCard, 7.0f);
     DrawRoundedRect(g, penCard, rWriteCard, 7.0f);
 
     // Header Tag
-    g.DrawString(L"WRITE", -1, &fontCardTag, PointF(28.0f, 62.0f), &brushCyan);
+    g.DrawString(L"WRITE", -1, &fontCardTag, PointF(wCardX + 16.0f, cardY + 12.0f), &brushCyan);
 
     std::wstring writeTag = L"DIRECT I/O";
     Brush* pWriteTagBrush = &brushMuted;
@@ -600,13 +633,12 @@ void MainWindow::OnPaint() {
         writeTag = L"\u25CF FINISHED";
         pWriteTagBrush = &brushMuted;
     }
-    RectF rWTagRight(16.0f, 64.0f, cardW - 24.0f, 16.0f);
+    RectF rWTagRight(wCardX + 16.0f, cardY + 14.0f, cardW - 32.0f, 16.0f);
     g.DrawString(writeTag.c_str(), -1, &fontCardSub, rWTagRight, &sfRight, pWriteTagBrush);
 
     // Speed Value
-    std::wstring wSpeedNum = L"--";
+    std::wstring wSpeedNum = L"0.0";
     double wPeak = 0.0, wAvg = 0.0;
-    uint32_t wIops = 0;
 
     if (isWriting) {
         std::wostringstream ss;
@@ -614,39 +646,37 @@ void MainWindow::OnPaint() {
         wSpeedNum = ss.str();
         wPeak = status.peakMBps;
         wAvg = status.averageMBps;
-        wIops = status.currentIOPS;
     } else if (resSeqW) {
         std::wostringstream ss;
         ss << std::fixed << std::setprecision(1) << resSeqW->avgMBps;
         wSpeedNum = ss.str();
         wPeak = resSeqW->peakMBps;
         wAvg = resSeqW->avgMBps;
-        wIops = resSeqW->avgIOPS;
     }
 
-    PointF ptWSpeed(28.0f, 84.0f);
-    Brush* pWNumBrush = isWriting ? &brushCyan : (wSpeedNum == L"--" ? &brushDim : &brushWhite);
-    g.DrawString(wSpeedNum.c_str(), -1, &fontHeroSpeed, ptWSpeed, pWNumBrush);
+    PointF ptWSpeed(wCardX + 16.0f, cardY + 34.0f);
+    Brush* pWNumBrush = isWriting ? &brushCyan : (wSpeedNum == L"0.0" ? &brushDim : &brushWhite);
+    g.DrawString(wSpeedNum.c_str(), -1, &fontHeroSpeed, ptWSpeed, StringFormat::GenericTypographic(), pWNumBrush);
 
     RectF boundWSpeed;
-    g.MeasureString(wSpeedNum.c_str(), -1, &fontHeroSpeed, ptWSpeed, &boundWSpeed);
-    PointF ptWUnit(boundWSpeed.X + boundWSpeed.Width + 6.0f, 102.0f);
-    g.DrawString(L"MB/s", -1, &fontHeroUnit, ptWUnit, &brushMuted);
+    g.MeasureString(wSpeedNum.c_str(), -1, &fontHeroSpeed, ptWSpeed, StringFormat::GenericTypographic(), &boundWSpeed);
+    PointF ptWUnit(boundWSpeed.X + boundWSpeed.Width + 6.0f, cardY + 52.0f);
+    g.DrawString(L"MB/s", -1, &fontHeroUnit, ptWUnit, StringFormat::GenericTypographic(), &brushMuted);
 
-    // Write Sub-metric
+    // Subtext
     std::wostringstream ssWSub;
     if (wPeak > 0.0) {
         ssWSub << L"Peak: " << std::fixed << std::setprecision(0) << wPeak << L" MB/s   Avg: " << wAvg << L" MB/s";
     } else {
         ssWSub << L"Direct physical write throughput";
     }
-    g.DrawString(ssWSub.str().c_str(), -1, &fontHeroStat, PointF(28.0f, 134.0f), &brushMuted);
+    g.DrawString(ssWSub.str().c_str(), -1, &fontHeroStat, PointF(wCardX + 16.0f, cardY + 76.0f), &brushMuted);
 
-    // Mini Sparkline inside Write card (Y: 154 to 206, H: 52px)
-    float spWX = 28.0f;
-    float spWY = 154.0f;
-    float spWW = cardW - 24.0f;
-    float spWH = 50.0f;
+    // Mini Sparkline at bottom of Write card
+    float spWX = wCardX + 16.0f;
+    float spWY = cardY + 96.0f;
+    float spWW = cardW - 32.0f;
+    float spWH = 32.0f;
 
     g.DrawLine(&penDivider, spWX, spWY + spWH, spWX + spWW, spWY + spWH);
 
@@ -672,28 +702,29 @@ void MainWindow::OnPaint() {
         fillPath.AddLine(pts.back(), PointF(pts.back().X, spWY + spWH));
         fillPath.CloseFigure();
 
-        SolidBrush areaBrush(Color(30, 88, 166, 255));
+        SolidBrush areaBrush(Color(25, 88, 166, 255));
         g.FillPath(&areaBrush, &fillPath);
 
-        Pen penCurve(colorActiveBlue, 1.5f);
+        Pen penCurve(colorActiveBlue, 1.4f);
         for (size_t i = 1; i < pts.size(); ++i) g.DrawLine(&penCurve, pts[i - 1], pts[i]);
 
         if (isWriting) {
             PointF head = pts.back();
             SolidBrush bHead(colorActiveBlue);
-            g.FillEllipse(&bHead, head.X - 3.0f, head.Y - 3.0f, 6.0f, 6.0f);
+            g.FillEllipse(&bHead, head.X - 2.5f, head.Y - 2.5f, 5.0f, 5.0f);
         }
     }
 
     // --------------------------------------------------------
     // 2.2 RIGHT CARD: READ SPEED
     // --------------------------------------------------------
-    RectF rReadCard(326.0f, cardY, cardW, cardH);
+    float rCardX = wCardX + cardW + 16.0f;
+    RectF rReadCard(rCardX, cardY, cardW, cardH);
     FillRoundedRect(g, brushCard, rReadCard, 7.0f);
     DrawRoundedRect(g, penCard, rReadCard, 7.0f);
 
     // Header Tag
-    g.DrawString(L"READ", -1, &fontCardTag, PointF(338.0f, 62.0f), &brushEmerald);
+    g.DrawString(L"READ", -1, &fontCardTag, PointF(rCardX + 16.0f, cardY + 12.0f), &brushEmerald);
 
     std::wstring readTag = L"DIRECT I/O";
     Brush* pReadTagBrush = &brushMuted;
@@ -704,13 +735,12 @@ void MainWindow::OnPaint() {
         readTag = L"\u25CF FINISHED";
         pReadTagBrush = &brushMuted;
     }
-    RectF rRTagRight(326.0f, 64.0f, cardW - 24.0f, 16.0f);
+    RectF rRTagRight(rCardX + 16.0f, cardY + 14.0f, cardW - 32.0f, 16.0f);
     g.DrawString(readTag.c_str(), -1, &fontCardSub, rRTagRight, &sfRight, pReadTagBrush);
 
-    // Read Speed Value
-    std::wstring rSpeedNum = L"--";
+    // Speed Value
+    std::wstring rSpeedNum = L"0.0";
     double rPeak = 0.0, rAvg = 0.0;
-    uint32_t rIops = 0;
 
     if (isReading) {
         std::wostringstream ss;
@@ -718,39 +748,37 @@ void MainWindow::OnPaint() {
         rSpeedNum = ss.str();
         rPeak = status.peakMBps;
         rAvg = status.averageMBps;
-        rIops = status.currentIOPS;
     } else if (resSeqR) {
         std::wostringstream ss;
         ss << std::fixed << std::setprecision(1) << resSeqR->avgMBps;
         rSpeedNum = ss.str();
         rPeak = resSeqR->peakMBps;
         rAvg = resSeqR->avgMBps;
-        rIops = resSeqR->avgIOPS;
     }
 
-    PointF ptRSpeed(338.0f, 84.0f);
-    Brush* pRNumBrush = isReading ? &brushEmerald : (rSpeedNum == L"--" ? &brushDim : &brushWhite);
-    g.DrawString(rSpeedNum.c_str(), -1, &fontHeroSpeed, ptRSpeed, pRNumBrush);
+    PointF ptRSpeed(rCardX + 16.0f, cardY + 34.0f);
+    Brush* pRNumBrush = isReading ? &brushEmerald : (rSpeedNum == L"0.0" ? &brushDim : &brushWhite);
+    g.DrawString(rSpeedNum.c_str(), -1, &fontHeroSpeed, ptRSpeed, StringFormat::GenericTypographic(), pRNumBrush);
 
     RectF boundRSpeed;
-    g.MeasureString(rSpeedNum.c_str(), -1, &fontHeroSpeed, ptRSpeed, &boundRSpeed);
-    PointF ptRUnit(boundRSpeed.X + boundRSpeed.Width + 6.0f, 102.0f);
-    g.DrawString(L"MB/s", -1, &fontHeroUnit, ptRUnit, &brushMuted);
+    g.MeasureString(rSpeedNum.c_str(), -1, &fontHeroSpeed, ptRSpeed, StringFormat::GenericTypographic(), &boundRSpeed);
+    PointF ptRUnit(boundRSpeed.X + boundRSpeed.Width + 6.0f, cardY + 52.0f);
+    g.DrawString(L"MB/s", -1, &fontHeroUnit, ptRUnit, StringFormat::GenericTypographic(), &brushMuted);
 
-    // Read Sub-metric
+    // Subtext
     std::wostringstream ssRSub;
     if (rPeak > 0.0) {
         ssRSub << L"Peak: " << std::fixed << std::setprecision(0) << rPeak << L" MB/s   Avg: " << rAvg << L" MB/s";
     } else {
         ssRSub << L"Direct unbuffered read throughput";
     }
-    g.DrawString(ssRSub.str().c_str(), -1, &fontHeroStat, PointF(338.0f, 134.0f), &brushMuted);
+    g.DrawString(ssRSub.str().c_str(), -1, &fontHeroStat, PointF(rCardX + 16.0f, cardY + 76.0f), &brushMuted);
 
-    // Mini Sparkline inside Read card (Y: 154 to 206, H: 52px)
-    float spRX = 338.0f;
-    float spRY = 154.0f;
-    float spRW = cardW - 24.0f;
-    float spRH = 50.0f;
+    // Mini Sparkline at bottom of Read card
+    float spRX = rCardX + 16.0f;
+    float spRY = cardY + 96.0f;
+    float spRW = cardW - 32.0f;
+    float spRH = 32.0f;
 
     g.DrawLine(&penDivider, spRX, spRY + spRH, spRX + spRW, spRY + spRH);
 
@@ -776,109 +804,118 @@ void MainWindow::OnPaint() {
         fillPath.AddLine(pts.back(), PointF(pts.back().X, spRY + spRH));
         fillPath.CloseFigure();
 
-        SolidBrush areaBrush(Color(30, 63, 185, 80));
+        SolidBrush areaBrush(Color(25, 63, 185, 80));
         g.FillPath(&areaBrush, &fillPath);
 
-        Pen penCurve(colorEmerald, 1.5f);
+        Pen penCurve(colorEmerald, 1.4f);
         for (size_t i = 1; i < pts.size(); ++i) g.DrawLine(&penCurve, pts[i - 1], pts[i]);
 
         if (isReading) {
             PointF head = pts.back();
             SolidBrush bHead(colorEmerald);
-            g.FillEllipse(&bHead, head.X - 3.0f, head.Y - 3.0f, 6.0f, 6.0f);
+            g.FillEllipse(&bHead, head.X - 2.5f, head.Y - 2.5f, 5.0f, 5.0f);
         }
     }
 
     // ========================================================
-    // 3. DETAILED RESULTS BREAKDOWN TABLE CARD (Y: 226 to 434, Height 208px)
+    // 3. DETAILED RESULTS TABLE CARD (Y: 202 to 436, Height: 234px)
     // ========================================================
-    RectF rTable(16.0f, 226.0f, 608.0f, 208.0f);
+    float tblY = cardY + cardH + 12.0f;
+    float tblH = 186.0f;
+    RectF rTable(16.0f, tblY, contentW, tblH);
     FillRoundedRect(g, brushCard, rTable, 7.0f);
     DrawRoundedRect(g, penCard, rTable, 7.0f);
 
-    // 3.1 Table Header Row (Y = 236)
-    g.DrawString(L"TEST PROFILE", -1, &fontThHeader, PointF(30.0f, 236.0f), &brushMuted);
-    g.DrawString(L"WRITE SPEED", -1, &fontThHeader, PointF(230.0f, 236.0f), &brushCyan);
-    g.DrawString(L"READ SPEED",  -1, &fontThHeader, PointF(370.0f, 236.0f), &brushEmerald);
-    g.DrawString(L"LATENCY / IOPS", -1, &fontThHeader, PointF(500.0f, 236.0f), &brushMuted);
+    float colProfile = 32.0f;
+    float colWrite   = 230.0f;
+    float colRead    = 360.0f;
+    float colLat     = 490.0f;
 
-    g.DrawLine(&penDivider, 24.0f, 254.0f, 616.0f, 254.0f);
+    // 3.1 Table Header Row
+    g.DrawString(L"TEST PROFILE", -1, &fontThHeader, PointF(colProfile, tblY + 12.0f), &brushMuted);
+    g.DrawString(L"WRITE SPEED", -1, &fontThHeader, PointF(colWrite, tblY + 12.0f), &brushCyan);
+    g.DrawString(L"READ SPEED",  -1, &fontThHeader, PointF(colRead, tblY + 12.0f), &brushEmerald);
+    g.DrawString(L"LATENCY / IOPS", -1, &fontThHeader, PointF(colLat, tblY + 12.0f), &brushMuted);
 
-    // 3.2 Row 1: Sequential 1MB (Y: 260 to 304)
-    g.DrawString(L"Sequential (1 MB)", -1, &fontRowTitle, PointF(30.0f, 260.0f), &brushWhite);
-    g.DrawString(L"Continuous block stream", -1, &fontRowSub, PointF(30.0f, 278.0f), &brushMuted);
+    g.DrawLine(&penDivider, 24.0f, tblY + 28.0f, 16.0f + contentW - 8.0f, tblY + 28.0f);
+
+    // 3.2 Row 1: Sequential 1MB
+    float r1Y = tblY + 34.0f;
+    g.DrawString(L"Sequential (1 MB)", -1, &fontRowTitle, PointF(colProfile, r1Y), &brushWhite);
+    g.DrawString(L"Continuous direct block stream", -1, &fontRowSub, PointF(colProfile, r1Y + 18.0f), &brushMuted);
 
     // Seq Write cell
     if (resSeqW) {
         std::wostringstream ss; ss << std::fixed << std::setprecision(1) << resSeqW->avgMBps << L" MB/s";
-        g.DrawString(ss.str().c_str(), -1, &fontRowVal, PointF(230.0f, 264.0f), &brushCyan);
+        g.DrawString(ss.str().c_str(), -1, &fontRowVal, PointF(colWrite, r1Y + 4.0f), &brushCyan);
     } else if (isWriting && status.activeTest.find("Sequential") != std::string::npos) {
         std::wostringstream ss; ss << std::fixed << std::setprecision(1) << status.instantMBps << L" MB/s";
-        g.DrawString(ss.str().c_str(), -1, &fontRowVal, PointF(230.0f, 264.0f), &brushCyan);
+        g.DrawString(ss.str().c_str(), -1, &fontRowVal, PointF(colWrite, r1Y + 4.0f), &brushCyan);
     } else {
-        g.DrawString(L"-- MB/s", -1, &fontRowVal, PointF(230.0f, 264.0f), &brushDim);
+        g.DrawString(L"-- MB/s", -1, &fontRowVal, PointF(colWrite, r1Y + 4.0f), &brushDim);
     }
 
     // Seq Read cell
     if (resSeqR) {
         std::wostringstream ss; ss << std::fixed << std::setprecision(1) << resSeqR->avgMBps << L" MB/s";
-        g.DrawString(ss.str().c_str(), -1, &fontRowVal, PointF(370.0f, 264.0f), &brushEmerald);
+        g.DrawString(ss.str().c_str(), -1, &fontRowVal, PointF(colRead, r1Y + 4.0f), &brushEmerald);
     } else if (isReading && status.activeTest.find("Sequential") != std::string::npos) {
         std::wostringstream ss; ss << std::fixed << std::setprecision(1) << status.instantMBps << L" MB/s";
-        g.DrawString(ss.str().c_str(), -1, &fontRowVal, PointF(370.0f, 264.0f), &brushEmerald);
+        g.DrawString(ss.str().c_str(), -1, &fontRowVal, PointF(colRead, r1Y + 4.0f), &brushEmerald);
     } else {
-        g.DrawString(L"-- MB/s", -1, &fontRowVal, PointF(370.0f, 264.0f), &brushDim);
+        g.DrawString(L"-- MB/s", -1, &fontRowVal, PointF(colRead, r1Y + 4.0f), &brushDim);
     }
 
-    // Seq Latency / IOPS
+    // Seq Latency
     if (resSeqW || resSeqR) {
         double lat = resSeqR ? resSeqR->avgLatencyMs : resSeqW->avgLatencyMs;
         std::wostringstream ss; ss << std::fixed << std::setprecision(2) << lat << L" ms";
-        g.DrawString(ss.str().c_str(), -1, &fontRowLat, PointF(500.0f, 268.0f), &brushWhite);
+        g.DrawString(ss.str().c_str(), -1, &fontRowLat, PointF(colLat, r1Y + 8.0f), &brushWhite);
     } else {
-        g.DrawString(L"--", -1, &fontRowLat, PointF(500.0f, 268.0f), &brushDim);
+        g.DrawString(L"--", -1, &fontRowLat, PointF(colLat, r1Y + 8.0f), &brushDim);
     }
 
-    g.DrawLine(&penDivider, 24.0f, 308.0f, 616.0f, 308.0f);
+    g.DrawLine(&penDivider, 24.0f, tblY + 84.0f, 16.0f + contentW - 8.0f, tblY + 84.0f);
 
-    // 3.3 Row 2: Random 4K (Y: 314 to 358)
-    g.DrawString(L"Random 4K", -1, &fontRowTitle, PointF(30.0f, 314.0f), &brushWhite);
-    g.DrawString(L"4 KiB sector aligned IOPS", -1, &fontRowSub, PointF(30.0f, 332.0f), &brushMuted);
+    // 3.3 Row 2: Random 4K
+    float r2Y = tblY + 90.0f;
+    g.DrawString(L"Random 4K", -1, &fontRowTitle, PointF(colProfile, r2Y), &brushWhite);
+    g.DrawString(L"Direct unbuffered sector IOPS", -1, &fontRowSub, PointF(colProfile, r2Y + 18.0f), &brushMuted);
 
     // 4K Write cell
     if (res4KW) {
         std::wostringstream ss; ss << std::fixed << std::setprecision(1) << res4KW->avgMBps << L" MB/s";
-        g.DrawString(ss.str().c_str(), -1, &fontRowVal, PointF(230.0f, 318.0f), &brushCyan);
+        g.DrawString(ss.str().c_str(), -1, &fontRowVal, PointF(colWrite, r2Y + 4.0f), &brushCyan);
     } else if (isWriting && status.activeTest.find("Random") != std::string::npos) {
         std::wostringstream ss; ss << std::fixed << std::setprecision(1) << status.instantMBps << L" MB/s";
-        g.DrawString(ss.str().c_str(), -1, &fontRowVal, PointF(230.0f, 318.0f), &brushCyan);
+        g.DrawString(ss.str().c_str(), -1, &fontRowVal, PointF(colWrite, r2Y + 4.0f), &brushCyan);
     } else {
-        g.DrawString(L"-- MB/s", -1, &fontRowVal, PointF(230.0f, 318.0f), &brushDim);
+        g.DrawString(L"-- MB/s", -1, &fontRowVal, PointF(colWrite, r2Y + 4.0f), &brushDim);
     }
 
     // 4K Read cell
     if (res4KR) {
         std::wostringstream ss; ss << std::fixed << std::setprecision(1) << res4KR->avgMBps << L" MB/s";
-        g.DrawString(ss.str().c_str(), -1, &fontRowVal, PointF(370.0f, 318.0f), &brushEmerald);
+        g.DrawString(ss.str().c_str(), -1, &fontRowVal, PointF(colRead, r2Y + 4.0f), &brushEmerald);
     } else if (isReading && status.activeTest.find("Random") != std::string::npos) {
         std::wostringstream ss; ss << std::fixed << std::setprecision(1) << status.instantMBps << L" MB/s";
-        g.DrawString(ss.str().c_str(), -1, &fontRowVal, PointF(370.0f, 318.0f), &brushEmerald);
+        g.DrawString(ss.str().c_str(), -1, &fontRowVal, PointF(colRead, r2Y + 4.0f), &brushEmerald);
     } else {
-        g.DrawString(L"-- MB/s", -1, &fontRowVal, PointF(370.0f, 318.0f), &brushDim);
+        g.DrawString(L"-- MB/s", -1, &fontRowVal, PointF(colRead, r2Y + 4.0f), &brushDim);
     }
 
     // 4K IOPS cell
     if (res4KR || res4KW) {
         uint32_t iops = res4KR ? res4KR->avgIOPS : res4KW->avgIOPS;
         std::wostringstream ss; ss << iops << L" IOPS";
-        g.DrawString(ss.str().c_str(), -1, &fontRowLat, PointF(500.0f, 322.0f), &brushWhite);
+        g.DrawString(ss.str().c_str(), -1, &fontRowLat, PointF(colLat, r2Y + 8.0f), &brushWhite);
     } else {
-        g.DrawString(L"--", -1, &fontRowLat, PointF(500.0f, 322.0f), &brushDim);
+        g.DrawString(L"--", -1, &fontRowLat, PointF(colLat, r2Y + 8.0f), &brushDim);
     }
 
-    g.DrawLine(&penDivider, 24.0f, 362.0f, 616.0f, 362.0f);
+    g.DrawLine(&penDivider, 24.0f, tblY + 140.0f, 16.0f + contentW - 8.0f, tblY + 140.0f);
 
-    // 3.4 Footer Status & Slim Progress Bar (Y: 374 to 420)
+    // 3.4 Footer Status & Slim Progress Bar
     std::wstring footStatus = L"\u25CF Ready to benchmark";
     Brush* pFootBrush = &brushMuted;
     if (status.isRunning) {
@@ -891,12 +928,12 @@ void MainWindow::OnPaint() {
         footStatus = L"\u25CF Benchmark Stopped";
         pFootBrush = &brushMuted;
     }
-    g.DrawString(footStatus.c_str(), -1, &fontFooter, PointF(30.0f, 376.0f), pFootBrush);
+    g.DrawString(footStatus.c_str(), -1, &fontFooter, PointF(colProfile, tblY + 152.0f), pFootBrush);
 
     // Slim Progress Track
-    float pbX = 30.0f;
-    float pbY = 404.0f;
-    float pbW = 580.0f;
+    float pbX = colProfile;
+    float pbY = tblY + tblH - 18.0f;
+    float pbW = contentW - 32.0f;
     float pbH = 3.0f;
 
     SolidBrush brushPbTrack(Color(255, 33, 38, 45));
@@ -909,9 +946,4 @@ void MainWindow::OnPaint() {
         RectF rectPbFill(pbX, pbY, fillW, pbH);
         FillRoundedRect(g, brushPbFill, rectPbFill, 1.5f);
     }
-
-    // Blit Double Buffer to Screen
-    HDC hdcScreen = GetDC(m_hWnd);
-    BitBlt(hdcScreen, 0, 0, width, height, m_hMemDC, 0, 0, SRCCOPY);
-    ReleaseDC(m_hWnd, hdcScreen);
 }

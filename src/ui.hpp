@@ -21,6 +21,9 @@ public:
     void Show(int nCmdShow);
     HWND GetHwnd() const { return m_hWnd; }
 
+    void Render(Gdiplus::Graphics& g, int width, int height);
+    void PopulateDrives();
+
 private:
     static LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
     LRESULT HandleMessage(UINT msg, WPARAM wParam, LPARAM lParam);
@@ -29,13 +32,12 @@ private:
     void OnTimer();
     void OnDestroy();
 
-    void PopulateDrives();
     void HandleStartStop();
     void PromptCustomDirectory();
     void ShowDriveMenu();
     void ShowModeMenu();
     void ShowSizeMenu();
-    int HitTest(int x, int y) const;
+    int HitTest(int x, int y, int width) const;
 
     BenchmarkEngine& m_engine;
     HWND m_hWnd = nullptr;
