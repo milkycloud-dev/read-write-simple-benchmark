@@ -39,10 +39,15 @@ jobs:
           if (!(Test-Path $exePath)) {
             $exePath = "build\rw-benchmark.exe"
           }
-          Write-Host "Rendering offscreen UI screenshot with $exePath"
-          & $exePath --screenshot preview.png
-          if (!(Test-Path preview.png)) {
-            Write-Error "Screenshot file was not generated!"
+          $fullPath = [System.IO.Path]::GetFullPath("preview.png")
+          Write-Host "Rendering offscreen UI screenshot with $exePath to $fullPath"
+          $proc = Start-Process -FilePath $exePath -ArgumentList @("--screenshot", "`"$fullPath`"") -Wait -PassThru -NoNewWindow
+          Write-Host "rw-benchmark process finished with exit code: $($proc.ExitCode)"
+          if (Test-Path "screenshot.log") {
+            Get-Content "screenshot.log"
+          }
+          if (!(Test-Path $fullPath)) {
+            Write-Error "Screenshot file was not generated at $fullPath!"
             exit 1
           }
 
