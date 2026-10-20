@@ -83,7 +83,7 @@ bool MainWindow::Create() {
     RegisterClassExW(&wc);
 
     int clientW = 640;
-    int clientH = 404;
+    int clientH = 406;
 
     RECT rc = { 0, 0, clientW, clientH };
     AdjustWindowRectEx(&rc, WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX, FALSE, 0);
@@ -482,21 +482,21 @@ void MainWindow::Render(Graphics& g, int width, int height) {
     SolidBrush brushCyan(colorActiveBlue);
     SolidBrush brushEmerald(colorEmerald);
 
-    // Clean Segoe UI Typography
-    Font fontTitle(L"Segoe UI", 12.0f, FontStyleBold, UnitPoint);
-    Font fontPill(L"Segoe UI", 8.5f, FontStyleBold, UnitPoint);
-    Font fontCardTag(L"Segoe UI", 10.0f, FontStyleBold, UnitPoint);
-    Font fontCardSub(L"Segoe UI", 7.5f, FontStyleBold, UnitPoint);
-    Font fontHeroSpeed(L"Segoe UI", 30.0f, FontStyleBold, UnitPoint);
-    Font fontHeroUnit(L"Segoe UI", 11.0f, FontStyleBold, UnitPoint);
-    Font fontHeroStat(L"Segoe UI", 8.0f, FontStyleRegular, UnitPoint);
-    Font fontThHeader(L"Segoe UI", 8.0f, FontStyleBold, UnitPoint);
-    Font fontRowTitle(L"Segoe UI", 9.5f, FontStyleBold, UnitPoint);
-    Font fontRowSub(L"Segoe UI", 7.5f, FontStyleRegular, UnitPoint);
-    Font fontRowVal(L"Segoe UI", 13.5f, FontStyleBold, UnitPoint);
-    Font fontRowLat(L"Segoe UI", 8.5f, FontStyleRegular, UnitPoint);
-    Font fontBtn(L"Segoe UI", 9.5f, FontStyleBold, UnitPoint);
-    Font fontFooter(L"Segoe UI", 8.5f, FontStyleBold, UnitPoint);
+    // Clean Segoe UI Typography with fixed UnitPixel for deterministic rendering
+    Font fontTitle(L"Segoe UI", 16.0f, FontStyleBold, UnitPixel);
+    Font fontPill(L"Segoe UI", 12.0f, FontStyleBold, UnitPixel);
+    Font fontCardTag(L"Segoe UI", 13.0f, FontStyleBold, UnitPixel);
+    Font fontCardSub(L"Segoe UI", 10.0f, FontStyleBold, UnitPixel);
+    Font fontHeroSpeed(L"Segoe UI", 32.0f, FontStyleBold, UnitPixel);
+    Font fontHeroUnit(L"Segoe UI", 13.0f, FontStyleBold, UnitPixel);
+    Font fontHeroStat(L"Segoe UI", 11.0f, FontStyleRegular, UnitPixel);
+    Font fontThHeader(L"Segoe UI", 11.0f, FontStyleBold, UnitPixel);
+    Font fontRowTitle(L"Segoe UI", 13.0f, FontStyleBold, UnitPixel);
+    Font fontRowSub(L"Segoe UI", 10.0f, FontStyleRegular, UnitPixel);
+    Font fontRowVal(L"Segoe UI", 16.0f, FontStyleBold, UnitPixel);
+    Font fontRowLat(L"Segoe UI", 11.0f, FontStyleRegular, UnitPixel);
+    Font fontBtn(L"Segoe UI", 12.0f, FontStyleBold, UnitPixel);
+    Font fontFooter(L"Segoe UI", 11.0f, FontStyleBold, UnitPixel);
 
     StringFormat sfCenter;
     sfCenter.SetAlignment(StringAlignmentCenter);
@@ -610,7 +610,7 @@ void MainWindow::Render(Graphics& g, int width, int height) {
     // ========================================================
     float contentW = static_cast<float>(width) - 32.0f;
     float cardW = (contentW - 16.0f) / 2.0f;
-    float cardH = 140.0f;
+    float cardH = 136.0f;
     float cardY = 50.0f;
 
     // --------------------------------------------------------
@@ -676,7 +676,7 @@ void MainWindow::Render(Graphics& g, int width, int height) {
     float spWX = wCardX + 16.0f;
     float spWY = cardY + 96.0f;
     float spWW = cardW - 32.0f;
-    float spWH = 32.0f;
+    float spWH = 26.0f;
 
     g.DrawLine(&penDivider, spWX, spWY + spWH, spWX + spWW, spWY + spWH);
 
@@ -778,7 +778,7 @@ void MainWindow::Render(Graphics& g, int width, int height) {
     float spRX = rCardX + 16.0f;
     float spRY = cardY + 96.0f;
     float spRW = cardW - 32.0f;
-    float spRH = 32.0f;
+    float spRH = 26.0f;
 
     g.DrawLine(&penDivider, spRX, spRY + spRH, spRX + spRW, spRY + spRH);
 
@@ -821,7 +821,7 @@ void MainWindow::Render(Graphics& g, int width, int height) {
     // 3. DETAILED RESULTS TABLE CARD (Y: 202 to 436, Height: 234px)
     // ========================================================
     float tblY = cardY + cardH + 12.0f;
-    float tblH = 186.0f;
+    float tblH = 192.0f;
     RectF rTable(16.0f, tblY, contentW, tblH);
     FillRoundedRect(g, brushCard, rTable, 7.0f);
     DrawRoundedRect(g, penCard, rTable, 7.0f);
@@ -837,83 +837,83 @@ void MainWindow::Render(Graphics& g, int width, int height) {
     g.DrawString(L"READ SPEED",  -1, &fontThHeader, PointF(colRead, tblY + 12.0f), &brushEmerald);
     g.DrawString(L"LATENCY / IOPS", -1, &fontThHeader, PointF(colLat, tblY + 12.0f), &brushMuted);
 
-    g.DrawLine(&penDivider, 24.0f, tblY + 28.0f, 16.0f + contentW - 8.0f, tblY + 28.0f);
+    g.DrawLine(&penDivider, 24.0f, tblY + 30.0f, 16.0f + contentW - 8.0f, tblY + 30.0f);
 
     // 3.2 Row 1: Sequential 1MB
-    float r1Y = tblY + 34.0f;
+    float r1Y = tblY + 38.0f;
     g.DrawString(L"Sequential (1 MB)", -1, &fontRowTitle, PointF(colProfile, r1Y), &brushWhite);
-    g.DrawString(L"Continuous direct block stream", -1, &fontRowSub, PointF(colProfile, r1Y + 18.0f), &brushMuted);
+    g.DrawString(L"Continuous direct block stream", -1, &fontRowSub, PointF(colProfile, r1Y + 16.0f), &brushMuted);
 
     // Seq Write cell
     if (resSeqW) {
         std::wostringstream ss; ss << std::fixed << std::setprecision(1) << resSeqW->avgMBps << L" MB/s";
-        g.DrawString(ss.str().c_str(), -1, &fontRowVal, PointF(colWrite, r1Y + 4.0f), &brushCyan);
+        g.DrawString(ss.str().c_str(), -1, &fontRowVal, PointF(colWrite, r1Y + 2.0f), &brushCyan);
     } else if (isWriting && status.activeTest.find("Sequential") != std::string::npos) {
         std::wostringstream ss; ss << std::fixed << std::setprecision(1) << status.instantMBps << L" MB/s";
-        g.DrawString(ss.str().c_str(), -1, &fontRowVal, PointF(colWrite, r1Y + 4.0f), &brushCyan);
+        g.DrawString(ss.str().c_str(), -1, &fontRowVal, PointF(colWrite, r1Y + 2.0f), &brushCyan);
     } else {
-        g.DrawString(L"-- MB/s", -1, &fontRowVal, PointF(colWrite, r1Y + 4.0f), &brushDim);
+        g.DrawString(L"-- MB/s", -1, &fontRowVal, PointF(colWrite, r1Y + 2.0f), &brushDim);
     }
 
     // Seq Read cell
     if (resSeqR) {
         std::wostringstream ss; ss << std::fixed << std::setprecision(1) << resSeqR->avgMBps << L" MB/s";
-        g.DrawString(ss.str().c_str(), -1, &fontRowVal, PointF(colRead, r1Y + 4.0f), &brushEmerald);
+        g.DrawString(ss.str().c_str(), -1, &fontRowVal, PointF(colRead, r1Y + 2.0f), &brushEmerald);
     } else if (isReading && status.activeTest.find("Sequential") != std::string::npos) {
         std::wostringstream ss; ss << std::fixed << std::setprecision(1) << status.instantMBps << L" MB/s";
-        g.DrawString(ss.str().c_str(), -1, &fontRowVal, PointF(colRead, r1Y + 4.0f), &brushEmerald);
+        g.DrawString(ss.str().c_str(), -1, &fontRowVal, PointF(colRead, r1Y + 2.0f), &brushEmerald);
     } else {
-        g.DrawString(L"-- MB/s", -1, &fontRowVal, PointF(colRead, r1Y + 4.0f), &brushDim);
+        g.DrawString(L"-- MB/s", -1, &fontRowVal, PointF(colRead, r1Y + 2.0f), &brushDim);
     }
 
     // Seq Latency
     if (resSeqW || resSeqR) {
         double lat = resSeqR ? resSeqR->avgLatencyMs : resSeqW->avgLatencyMs;
         std::wostringstream ss; ss << std::fixed << std::setprecision(2) << lat << L" ms";
-        g.DrawString(ss.str().c_str(), -1, &fontRowLat, PointF(colLat, r1Y + 8.0f), &brushWhite);
+        g.DrawString(ss.str().c_str(), -1, &fontRowLat, PointF(colLat, r1Y + 5.0f), &brushWhite);
     } else {
-        g.DrawString(L"--", -1, &fontRowLat, PointF(colLat, r1Y + 8.0f), &brushDim);
+        g.DrawString(L"--", -1, &fontRowLat, PointF(colLat, r1Y + 5.0f), &brushDim);
     }
 
-    g.DrawLine(&penDivider, 24.0f, tblY + 84.0f, 16.0f + contentW - 8.0f, tblY + 84.0f);
+    g.DrawLine(&penDivider, 24.0f, tblY + 78.0f, 16.0f + contentW - 8.0f, tblY + 78.0f);
 
     // 3.3 Row 2: Random 4K
-    float r2Y = tblY + 90.0f;
+    float r2Y = tblY + 86.0f;
     g.DrawString(L"Random 4K", -1, &fontRowTitle, PointF(colProfile, r2Y), &brushWhite);
-    g.DrawString(L"Direct unbuffered sector IOPS", -1, &fontRowSub, PointF(colProfile, r2Y + 18.0f), &brushMuted);
+    g.DrawString(L"Direct unbuffered sector IOPS", -1, &fontRowSub, PointF(colProfile, r2Y + 16.0f), &brushMuted);
 
     // 4K Write cell
     if (res4KW) {
         std::wostringstream ss; ss << std::fixed << std::setprecision(1) << res4KW->avgMBps << L" MB/s";
-        g.DrawString(ss.str().c_str(), -1, &fontRowVal, PointF(colWrite, r2Y + 4.0f), &brushCyan);
+        g.DrawString(ss.str().c_str(), -1, &fontRowVal, PointF(colWrite, r2Y + 2.0f), &brushCyan);
     } else if (isWriting && status.activeTest.find("Random") != std::string::npos) {
         std::wostringstream ss; ss << std::fixed << std::setprecision(1) << status.instantMBps << L" MB/s";
-        g.DrawString(ss.str().c_str(), -1, &fontRowVal, PointF(colWrite, r2Y + 4.0f), &brushCyan);
+        g.DrawString(ss.str().c_str(), -1, &fontRowVal, PointF(colWrite, r2Y + 2.0f), &brushCyan);
     } else {
-        g.DrawString(L"-- MB/s", -1, &fontRowVal, PointF(colWrite, r2Y + 4.0f), &brushDim);
+        g.DrawString(L"-- MB/s", -1, &fontRowVal, PointF(colWrite, r2Y + 2.0f), &brushDim);
     }
 
     // 4K Read cell
     if (res4KR) {
         std::wostringstream ss; ss << std::fixed << std::setprecision(1) << res4KR->avgMBps << L" MB/s";
-        g.DrawString(ss.str().c_str(), -1, &fontRowVal, PointF(colRead, r2Y + 4.0f), &brushEmerald);
+        g.DrawString(ss.str().c_str(), -1, &fontRowVal, PointF(colRead, r2Y + 2.0f), &brushEmerald);
     } else if (isReading && status.activeTest.find("Random") != std::string::npos) {
         std::wostringstream ss; ss << std::fixed << std::setprecision(1) << status.instantMBps << L" MB/s";
-        g.DrawString(ss.str().c_str(), -1, &fontRowVal, PointF(colRead, r2Y + 4.0f), &brushEmerald);
+        g.DrawString(ss.str().c_str(), -1, &fontRowVal, PointF(colRead, r2Y + 2.0f), &brushEmerald);
     } else {
-        g.DrawString(L"-- MB/s", -1, &fontRowVal, PointF(colRead, r2Y + 4.0f), &brushDim);
+        g.DrawString(L"-- MB/s", -1, &fontRowVal, PointF(colRead, r2Y + 2.0f), &brushDim);
     }
 
     // 4K IOPS cell
     if (res4KR || res4KW) {
         uint32_t iops = res4KR ? res4KR->avgIOPS : res4KW->avgIOPS;
         std::wostringstream ss; ss << iops << L" IOPS";
-        g.DrawString(ss.str().c_str(), -1, &fontRowLat, PointF(colLat, r2Y + 8.0f), &brushWhite);
+        g.DrawString(ss.str().c_str(), -1, &fontRowLat, PointF(colLat, r2Y + 5.0f), &brushWhite);
     } else {
-        g.DrawString(L"--", -1, &fontRowLat, PointF(colLat, r2Y + 8.0f), &brushDim);
+        g.DrawString(L"--", -1, &fontRowLat, PointF(colLat, r2Y + 5.0f), &brushDim);
     }
 
-    g.DrawLine(&penDivider, 24.0f, tblY + 140.0f, 16.0f + contentW - 8.0f, tblY + 140.0f);
+    g.DrawLine(&penDivider, 24.0f, tblY + 126.0f, 16.0f + contentW - 8.0f, tblY + 126.0f);
 
     // 3.4 Footer Status & Slim Progress Bar
     std::wstring footStatus = L"\u25CF Ready to benchmark";
@@ -928,11 +928,11 @@ void MainWindow::Render(Graphics& g, int width, int height) {
         footStatus = L"\u25CF Benchmark Stopped";
         pFootBrush = &brushMuted;
     }
-    g.DrawString(footStatus.c_str(), -1, &fontFooter, PointF(colProfile, tblY + 152.0f), pFootBrush);
+    g.DrawString(footStatus.c_str(), -1, &fontFooter, PointF(colProfile, tblY + 138.0f), pFootBrush);
 
     // Slim Progress Track
     float pbX = colProfile;
-    float pbY = tblY + tblH - 18.0f;
+    float pbY = tblY + 166.0f;
     float pbW = contentW - 32.0f;
     float pbH = 3.0f;
 

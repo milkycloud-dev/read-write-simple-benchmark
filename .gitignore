@@ -11,6 +11,8 @@ build/
 # Logs and secrets
 logs-agent/
 .env
+screenshot.log
+scratch/
 
 # OS / Editor files
 .vscode/

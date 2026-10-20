@@ -90,7 +90,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
                     log << L"[Screenshot] Drives detected" << std::endl;
 
                     int w = 640;
-                    int h = 404;
+                    int h = 406;
                     Gdiplus::Bitmap bmp(w, h, PixelFormat32bppARGB);
                     {
                         Gdiplus::Graphics g(&bmp);
