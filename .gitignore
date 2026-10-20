@@ -1,0 +1,19 @@
+# Dependencies and tools
+.tools/
+bin/
+build/
+*.exe
+*.o
+*.obj
+*.pdb
+*.tmp
+
+# Logs and secrets
+logs-agent/
+.env
+
+# OS / Editor files
+.vscode/
+.idea/
+Thumbs.db
+Desktop.ini
