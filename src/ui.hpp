@@ -25,31 +25,31 @@ private:
     static LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
     LRESULT HandleMessage(UINT msg, WPARAM wParam, LPARAM lParam);
 
-    void OnCreate();
     void OnPaint();
     void OnTimer();
-    void OnCommand(WORD id, WORD code);
     void OnDestroy();
 
     void PopulateDrives();
     void HandleStartStop();
     void PromptCustomDirectory();
+    void ShowDriveMenu();
+    int HitTest(int x, int y) const;
 
     BenchmarkEngine& m_engine;
     HWND m_hWnd = nullptr;
-    HWND m_cbDrives = nullptr;
-    HWND m_cbSize = nullptr;
-    HWND m_cbMode = nullptr;
-    HWND m_btnStart = nullptr;
-
-    HFONT m_hFontUI = nullptr;
-    HFONT m_hFontTitle = nullptr;
-    HFONT m_hFontSpeed = nullptr;
-    HFONT m_hFontSmall = nullptr;
 
     std::vector<DriveInfo> m_drives;
     int m_selectedDriveIndex = 0;
     std::wstring m_customPath;
+
+    // 0: Full Suite, 1: Seq Write, 2: Seq Read, 3: Random 4K
+    int m_selectedMode = 0;
+    // 0: 128 MB, 1: 256 MB, 2: 512 MB, 3: 1 GB
+    int m_selectedSize = 1;
+
+    // Hover state: 0=none, 1=drive, 10..13=mode, 20..23=size, 30=start/stop
+    int m_hoverId = 0;
+    bool m_trackingMouse = false;
 
     // Double buffering
     HDC m_hMemDC = nullptr;

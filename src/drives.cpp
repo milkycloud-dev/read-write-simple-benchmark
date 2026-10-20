@@ -28,6 +28,21 @@ std::wstring DriveInfo::GetDisplayName() const {
     return ss.str();
 }
 
+std::wstring DriveInfo::GetShortName() const {
+    std::wostringstream ss;
+    ss << path;
+    if (!volumeName.empty()) {
+        ss << L" [" << volumeName << L"]";
+    } else if (!fileSystem.empty() && fileSystem != L"Unknown") {
+        ss << L" (" << fileSystem << L")";
+    }
+    if (totalBytes > 0) {
+        double freeGb = static_cast<double>(freeBytes) / (1024.0 * 1024.0 * 1024.0);
+        ss << L" \u2022 " << std::fixed << std::setprecision(0) << freeGb << L" GB Free";
+    }
+    return ss.str();
+}
+
 std::vector<DriveInfo> DetectAllDrives() {
     std::vector<DriveInfo> list;
 

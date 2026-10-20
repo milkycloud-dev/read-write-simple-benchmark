@@ -15,6 +15,7 @@ struct DriveInfo {
     bool isWritable = true;
 
     std::wstring GetDisplayName() const;
+    std::wstring GetShortName() const;
 };
 
 std::vector<DriveInfo> DetectAllDrives();
