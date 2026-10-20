@@ -7,117 +7,89 @@
 #include <sstream>
 #include <iomanip>
 
-static std::string WideToUtf8(const std::wstring& wstr) {
-    if (wstr.empty()) return "";
-    int size = WideCharToMultiByte(CP_UTF8, 0, wstr.data(), (int)wstr.size(), nullptr, 0, nullptr, nullptr);
-    if (size <= 0) return "";
-    std::string result(size, 0);
-    WideCharToMultiByte(CP_UTF8, 0, wstr.data(), (int)wstr.size(), &result[0], size, nullptr, nullptr);
-    return result;
-}
-
-static std::string EscapeJsonString(const std::string& input) {
-    std::ostringstream ss;
-    for (char c : input) {
-        switch (c) {
-            case '"': ss << "\\\""; break;
-            case '\\': ss << "\\\\"; break;
-            case '\b': ss << "\\b"; break;
-            case '\f': ss << "\\f"; break;
-            case '\n': ss << "\\n"; break;
-            case '\r': ss << "\\r"; break;
-            case '\t': ss << "\\t"; break;
-            default:
-                if (static_cast<unsigned char>(c) < 0x20) {
-                    ss << "\\u" << std::hex << std::setw(4) << std::setfill('0') << (int)c;
-                } else {
-                    ss << c;
-                }
-        }
+std::wstring DriveInfo::GetDisplayName() const {
+    std::wostringstream ss;
+    ss << path;
+    if (!volumeName.empty()) {
+        ss << L" [" << volumeName << L"]";
     }
+    if (!fileSystem.empty() && fileSystem != L"Unknown") {
+        ss << L" (" << fileSystem << L")";
+    } else {
+        ss << L" (" << driveType << L")";
+    }
+
+    if (totalBytes > 0) {
+        double freeGb = static_cast<double>(freeBytes) / (1024.0 * 1024.0 * 1024.0);
+        double totalGb = static_cast<double>(totalBytes) / (1024.0 * 1024.0 * 1024.0);
+        ss << L" - " << std::fixed << std::setprecision(1) << freeGb << L" GB free / " << totalGb << L" GB";
+    }
+
     return ss.str();
 }
 
 std::vector<DriveInfo> DetectAllDrives() {
     std::vector<DriveInfo> list;
-    DWORD bufferLen = GetLogicalDriveStringsW(0, nullptr);
-    if (bufferLen == 0) return list;
 
-    std::vector<wchar_t> buffer(bufferLen + 1);
-    if (!GetLogicalDriveStringsW(bufferLen, buffer.data())) return list;
+    // Suppress system error popups (e.g., removable drive without card inserted)
+    UINT oldErrorMode = SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOOPENFILEERRORBOX);
 
-    const wchar_t* pDrive = buffer.data();
-    while (*pDrive) {
-        DriveInfo info;
-        info.path = pDrive; // e.g. "C:\\"
+    // Scan all drive letters from A to Z
+    for (wchar_t letter = L'A'; letter <= L'Z'; ++letter) {
+        std::wstring driveRoot = std::wstring(1, letter) + L":\\";
+        UINT type = GetDriveTypeW(driveRoot.c_str());
 
-        UINT type = GetDriveTypeW(pDrive);
-        switch (type) {
-            case DRIVE_FIXED:     info.driveType = L"Fixed SSD/HDD"; break;
-            case DRIVE_REMOVABLE: info.driveType = L"Removable USB"; break;
-            case DRIVE_REMOTE:    info.driveType = L"Network Drive"; break;
-            case DRIVE_CDROM:     info.driveType = L"Optical Drive"; break;
-            case DRIVE_RAMDISK:   info.driveType = L"RAM Disk"; break;
-            default:              info.driveType = L"Other Storage"; break;
+        if (type == DRIVE_NO_ROOT_DIR || type == DRIVE_UNKNOWN) {
+            continue;
         }
 
-        // Only test drives that are writable storages (Fixed, Removable, RAM Disk)
-        if (type == DRIVE_FIXED || type == DRIVE_REMOVABLE || type == DRIVE_RAMDISK) {
-            wchar_t volumeName[MAX_PATH + 1] = {0};
-            wchar_t fsName[MAX_PATH + 1] = {0};
-            DWORD serialNumber = 0, maxComponentLen = 0, flags = 0;
+        DriveInfo info;
+        info.path = driveRoot;
 
-            // Suppress Windows error dialog (e.g. if removable drive has no media)
-            UINT oldErrorMode = SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOOPENFILEERRORBOX);
+        switch (type) {
+            case DRIVE_FIXED:     info.driveType = L"Fixed Disk"; break;
+            case DRIVE_REMOVABLE: info.driveType = L"Removable / USB"; break;
+            case DRIVE_REMOTE:    info.driveType = L"Network Share"; break;
+            case DRIVE_RAMDISK:   info.driveType = L"RAM Disk"; break;
+            case DRIVE_CDROM:     info.driveType = L"CD/DVD-ROM"; break;
+            default:              info.driveType = L"Storage Device"; break;
+        }
 
-            if (GetVolumeInformationW(pDrive, volumeName, MAX_PATH, &serialNumber, &maxComponentLen, &flags, fsName, MAX_PATH)) {
-                info.volumeName = volumeName;
-                info.fileSystem = fsName;
-            } else {
-                info.fileSystem = L"Unknown";
-            }
+        // Check capacity
+        ULARGE_INTEGER freeCaller = {0}, total = {0}, totalFree = {0};
+        if (GetDiskFreeSpaceExW(driveRoot.c_str(), &freeCaller, &total, &totalFree)) {
+            info.freeBytes = freeCaller.QuadPart;
+            info.totalBytes = total.QuadPart;
+        }
 
-            ULARGE_INTEGER freeBytesCaller, totalBytes, totalFreeBytes;
-            if (GetDiskFreeSpaceExW(pDrive, &freeBytesCaller, &totalBytes, &totalFreeBytes)) {
-                info.totalBytes = totalBytes.QuadPart;
-                info.freeBytes = freeBytesCaller.QuadPart;
-            }
+        // Query Volume Information
+        wchar_t volName[MAX_PATH + 1] = {0};
+        wchar_t fsName[MAX_PATH + 1] = {0};
+        DWORD serial = 0, maxComponent = 0, flags = 0;
 
-            DWORD sectorsPerCluster = 0, bytesPerSector = 0, freeClusters = 0, totalClusters = 0;
-            if (GetDiskFreeSpaceW(pDrive, &sectorsPerCluster, &bytesPerSector, &freeClusters, &totalClusters)) {
-                info.sectorSize = (bytesPerSector > 0) ? bytesPerSector : 4096;
-            } else {
-                info.sectorSize = 4096;
-            }
+        if (GetVolumeInformationW(driveRoot.c_str(), volName, MAX_PATH, &serial, &maxComponent, &flags, fsName, MAX_PATH)) {
+            info.volumeName = volName;
+            info.fileSystem = fsName;
+        } else {
+            info.fileSystem = (type == DRIVE_CDROM) ? L"UDF/CDFS" : L"Unknown";
+        }
 
-            SetErrorMode(oldErrorMode);
+        // Query sector size
+        DWORD sectorsPerCluster = 0, bytesPerSector = 0, freeClusters = 0, totalClusters = 0;
+        if (GetDiskFreeSpaceW(driveRoot.c_str(), &sectorsPerCluster, &bytesPerSector, &freeClusters, &totalClusters)) {
+            info.sectorSize = (bytesPerSector > 0) ? bytesPerSector : 4096;
+        } else {
+            info.sectorSize = 4096;
+        }
 
-            info.isWritable = (info.freeBytes > 1024 * 1024 * 64); // at least 64MB free
+        info.isWritable = (type != DRIVE_CDROM && info.freeBytes > 1024 * 1024 * 32);
+
+        // Include any storage with accessible size or fixed/removable/remote status
+        if (type != DRIVE_CDROM || info.totalBytes > 0) {
             list.push_back(info);
         }
-
-        pDrive += wcslen(pDrive) + 1;
     }
 
+    SetErrorMode(oldErrorMode);
     return list;
-}
-
-std::string DrivesToJson(const std::vector<DriveInfo>& drives) {
-    std::ostringstream ss;
-    ss << "[\n";
-    for (size_t i = 0; i < drives.size(); ++i) {
-        const auto& d = drives[i];
-        ss << "  {\n";
-        ss << "    \"path\": \"" << EscapeJsonString(WideToUtf8(d.path)) << "\",\n";
-        ss << "    \"volumeName\": \"" << EscapeJsonString(WideToUtf8(d.volumeName)) << "\",\n";
-        ss << "    \"fileSystem\": \"" << EscapeJsonString(WideToUtf8(d.fileSystem)) << "\",\n";
-        ss << "    \"driveType\": \"" << EscapeJsonString(WideToUtf8(d.driveType)) << "\",\n";
-        ss << "    \"totalBytes\": " << d.totalBytes << ",\n";
-        ss << "    \"freeBytes\": " << d.freeBytes << ",\n";
-        ss << "    \"sectorSize\": " << d.sectorSize << ",\n";
-        ss << "    \"isWritable\": " << (d.isWritable ? "true" : "false") << "\n";
-        ss << "  }" << (i + 1 < drives.size() ? ",\n" : "\n");
-    }
-    ss << "]";
-    return ss.str();
 }

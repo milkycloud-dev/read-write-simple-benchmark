@@ -16,15 +16,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Regenerate embedded assets
-        run: |
-          python tools/generate_assets.py
-
       - name: Configure CMake (MSVC x64)
         run: |
           cmake -B build -DCMAKE_BUILD_TYPE=Release -A x64
@@ -33,7 +24,7 @@ jobs:
         run: |
           cmake --build build --config Release
 
-      - name: Verify Executable Runs in CI (CLI mode)
+      - name: Verify Executable in CI (CLI mode)
         run: |
           $exePath = "build\Release\rw-benchmark.exe"
           if (!(Test-Path $exePath)) {

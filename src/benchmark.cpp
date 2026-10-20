@@ -113,6 +113,37 @@ std::string BenchmarkEngine::GetStatusJson() {
     return ss.str();
 }
 
+static std::wstring GetWritableTestFilePath(const std::wstring& driveRoot) {
+    std::wstring root = driveRoot;
+    if (root.empty()) root = L"C:\\";
+    if (root.back() != L'\\') root += L'\\';
+
+    // Candidate 1: root directory
+    std::wstring p1 = root + L".rwbench_temp_benchmark.dat";
+    HANDLE h1 = CreateFileW(p1.c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_FLAG_DELETE_ON_CLOSE, nullptr);
+    if (h1 != INVALID_HANDLE_VALUE) {
+        CloseHandle(h1);
+        return p1;
+    }
+
+    // Candidate 2: Users\Public on that drive
+    std::wstring p2 = root + L"Users\\Public\\.rwbench_temp_benchmark.dat";
+    HANDLE h2 = CreateFileW(p2.c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_FLAG_DELETE_ON_CLOSE, nullptr);
+    if (h2 != INVALID_HANDLE_VALUE) {
+        CloseHandle(h2);
+        return p2;
+    }
+
+    // Candidate 3: User Temp directory if matching volume
+    wchar_t tempPath[MAX_PATH] = {0};
+    GetTempPathW(MAX_PATH, tempPath);
+    if (tempPath[0] && towupper(tempPath[0]) == towupper(root[0])) {
+        return std::wstring(tempPath) + L"rwbench_temp_benchmark.dat";
+    }
+
+    return p1;
+}
+
 void BenchmarkEngine::RunWorker(std::wstring drivePath, TestMode mode, uint64_t targetSizeBytes, uint32_t blockSizeBytes) {
     // Sector size detection
     uint32_t sectorSize = 4096;
@@ -129,10 +160,8 @@ void BenchmarkEngine::RunWorker(std::wstring drivePath, TestMode mode, uint64_t 
         blockSizeBytes = ((blockSizeBytes / sectorSize) + 1) * sectorSize;
     }
 
-    // Build temporary test file path in the root or accessible directory of target drive
-    std::wstring tempFilePath = drivePath;
-    if (tempFilePath.back() != L'\\') tempFilePath += L'\\';
-    tempFilePath += L".rwbench_temp_benchmark.dat";
+    // Resolve writable test file path
+    std::wstring tempFilePath = GetWritableTestFilePath(drivePath);
 
     bool success = true;
 

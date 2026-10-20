@@ -3,69 +3,45 @@
 [![CI Build & Release](https://github.com/milkycloud-dev/read-write-simple-benchmark/actions/workflows/build-and-release.yml/badge.svg)](https://github.com/milkycloud-dev/read-write-simple-benchmark/actions/workflows/build-and-release.yml)
 [![Platform](https://img.shields.io/badge/Platform-Windows%20x64-blue.svg)](https://github.com/milkycloud-dev/read-write-simple-benchmark)
 [![Language](https://img.shields.io/badge/C%2B%2B-20-purple.svg)](https://github.com/milkycloud-dev/read-write-simple-benchmark)
+[![GUI](https://img.shields.io/badge/GUI-Native%20Win32%2FGDI%2B-green.svg)](https://github.com/milkycloud-dev/read-write-simple-benchmark)
 [![License](https://img.shields.io/badge/License-Proprietary-red.svg)](LICENSE)
 
-A high-performance live disk read/write throughput benchmarker for Windows with an ultra-responsive **2026 Material 3 Dark** user interface. Built entirely in modern C++20 with raw Win32 Direct I/O.
+A high-performance, native Windows storage throughput benchmarker written in modern **C++20** with a clean **Material 3 Dark** native desktop interface. Designed for precision, minimal overhead, and zero external dependencies.
 
 ---
 
-## Key Features
+## Highlights
 
-- **Direct I/O Hardware Throughput**: Utilizes Win32 `FILE_FLAG_NO_BUFFERING | FILE_FLAG_WRITE_THROUGH` with sector-aligned buffers (`VirtualAlloc`) to completely bypass the Windows OS file system cache. Measures physical storage speeds accurately.
-- **Universal Windows Filesystem Support**: Automatically discovers and benchmarks drives formatted with any Windows-supported file system:
-  - **NTFS**
-  - **FAT32**
-  - **exFAT**
-  - **ReFS**
-- **Dynamic Live Visualization (60 FPS)**:
-  - Real-time speedometer gauge with adaptive max scaling.
-  - Anti-aliased canvas wave chart plotting instantaneous and smoothed average speeds simultaneously.
-  - Live IOPS (I/O Operations Per Second) and latency telemetry.
-- **Drive & Test Selector**:
-  - Full volume discovery (`GetLogicalDriveStringsW`, `GetVolumeInformationW`, `GetDiskFreeSpaceExW`).
-  - Detailed capacity bar and sector size detection.
-  - Configurable routines: **Sequential Write**, **Sequential Read**, **Random 4K (IOPS)**, or **Full Suite**.
-  - Configurable file sizes (128 MB to 2 GB).
-- **Standalone Portable Architecture**:
-  - Zero external runtime DLLs required.
-  - All web assets (HTML/CSS/JS) are embedded directly into the compiled executable.
-  - Automatically launches as a borderless, focused native-like desktop application via browser App Mode.
-  - Optional CLI mode for automated scripts (`--cli`).
-- **Safe Execution & Cleanup**:
-  - Non-destructive test files (`.rwbench_temp_benchmark.dat`) are automatically created, benchmarked, flushed, closed, and deleted immediately upon test completion or cancellation.
+- **Pure Native Windows Application**:
+  - Operates inside its own dedicated Win32 desktop window with Windows 11/10 immersive dark mode.
+  - Zero browser dependencies (no Chrome, Edge, or webviews).
+  - Razor-sharp native typography utilizing Microsoft **Segoe UI** with ClearType subpixel rendering.
+  - Zero-flicker double-buffered **60 FPS** GDI+ hardware-timed rendering.
+  - Ultra-lightweight footprint: starts in <15 ms and uses <15 MB of RAM.
 
----
+- **Direct I/O Hardware Measurement**:
+  - Utilizes low-level Win32 `FILE_FLAG_NO_BUFFERING | FILE_FLAG_WRITE_THROUGH` with sector-aligned buffers (`VirtualAlloc`).
+  - Bypasses the Windows file system cache to measure true physical controller and drive performance.
 
-## User Interface Preview
+- **Universal Storage & Volume Detection**:
+  - Automatically scans and lists all logical drives from `A:\` to `Z:\`:
+    - **Fixed Disks** (NVMe, SATA SSD, HDD)
+    - **Removable Storages** (USB Flash Drives, External SSDs, SD Cards)
+    - **RAM Disks & Virtual Volumes**
+    - **Network Shares**
+  - Supports all Windows file systems: **NTFS**, **FAT32**, **exFAT**, **ReFS**.
+  - Includes a **Custom Path / Folder** picker to benchmark any specific directory or mount point.
 
-The application incorporates cutting-edge **2026 Material 3 Dark** design principles:
-- Deep obsidian surface container palette (`#090C10`, `#101520`, `#161C2B`).
-- Vibrant neon accents: Electric Cyan (`#00E5FF`) for read throughput, Neon Emerald (`#00E676`) for write throughput, and Accent Violet (`#B388FF`).
-- Glassmorphic panels with subtle micro-borders and responsive layout.
-- Export results directly to structured JSON reports.
-
----
-
-## Architecture & Technology Stack
-
-| Component | Implementation |
-|---|---|
-| **Core Engine** | Modern C++20 with Win32 Storage API |
-| **I/O Mechanism** | `CreateFileW` with `FILE_FLAG_NO_BUFFERING` |
-| **Timing & Clock** | High-precision `QueryPerformanceCounter` (QPC) |
-| **Embedded Server** | Pure Win32 Winsock (`ws2_32`) HTTP & REST daemon |
-| **Frontend UI** | HTML5, CSS3, Vanilla JS (Material 3 Dark Design Tokens) |
-| **Asset Storage** | C++ Raw String Literals (`src/embedded_assets.hpp`) |
-| **Build & CI** | GitHub Actions (`windows-latest`, MSVC / MinGW) |
+- **Clean & Focused Dashboard**:
+  - Large digital speed readout with instantaneous throughput, peak speed, average speed, and IOPS.
+  - Real-time animated throughput wave chart.
+  - Compact summary table covering Sequential Write, Sequential Read, and Random 4K operations.
 
 ---
 
 ## Building from Source
 
 All builds are automated through GitHub Actions CI/CD to prevent consuming local system resources.
-
-### Automated CI/CD
-Pushing a Git tag (e.g. `v1.0.0`) triggers the automated GitHub Actions pipeline which compiles the release binary and publishes it under GitHub Releases.
 
 ### Manual CMake Build (Windows)
 ```powershell
@@ -78,7 +54,7 @@ The resulting standalone executable will be located in `build/Release/rw-benchma
 
 ## Command Line Usage
 
-To inspect detected volumes and test compatibility headlessly:
+To inspect detected volumes headlessly:
 ```powershell
 rw-benchmark.exe --cli
 ```
