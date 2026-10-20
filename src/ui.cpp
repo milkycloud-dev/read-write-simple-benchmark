@@ -440,8 +440,8 @@ void MainWindow::OnPaint() {
     Font fontSubBrand(L"Segoe UI", 8.5f, FontStyleRegular, UnitPoint);
     Font fontPill(L"Segoe UI", 9.0f, FontStyleRegular, UnitPoint);
     Font fontPillBold(L"Segoe UI", 9.0f, FontStyleBold, UnitPoint);
-    Font fontSpeed(L"Segoe UI", 42.0f, FontStyleBold, UnitPoint);
-    Font fontSpeedUnit(L"Segoe UI", 13.0f, FontStyleBold, UnitPoint);
+    Font fontSpeed(L"Segoe UI", 38.0f, FontStyleBold, UnitPoint);
+    Font fontSpeedUnit(L"Segoe UI", 12.0f, FontStyleBold, UnitPoint);
     Font fontStatus(L"Segoe UI", 9.5f, FontStyleBold, UnitPoint);
     Font fontStatLabel(L"Segoe UI", 9.0f, FontStyleRegular, UnitPoint);
     Font fontStatValue(L"Segoe UI", 9.0f, FontStyleBold, UnitPoint);
@@ -568,18 +568,35 @@ void MainWindow::OnPaint() {
 
     // ==========================================
     // 3. HERO SPEED CARD (Y: 108, H: 136, W: 732)
-    // Ample vertical padding: Speed at Y:118, Status at Y:186
+    // Structured: Status badge top, Speed center, Progress bottom
     // ==========================================
     RectF rectHero(24.0f, 108.0f, 732.0f, 136.0f);
     FillRoundedRect(g, brushCard, rectHero, 8.0f);
     DrawRoundedRect(g, penCard, rectHero, 8.0f);
 
-    // Hero Live Speed Readout
+    // 3.1 Status label at top of card (Y: 120)
+    std::wstring statusText = L"\u25CF Ready to benchmark";
+    Brush* pStatusBrush = &brushMuted;
+    if (status.isRunning) {
+        statusText = L"\u25CF " + std::wstring(status.activeTest.begin(), status.activeTest.end());
+        pStatusBrush = (status.activeTest.find("Write") != std::string::npos) ? &brushCyan : &brushEmerald;
+    } else if (status.phase == "Completed") {
+        statusText = L"\u25CF Benchmark Completed";
+        pStatusBrush = &brushEmerald;
+    } else if (status.phase == "Aborted") {
+        statusText = L"\u25CF Benchmark Stopped";
+        pStatusBrush = &brushMuted;
+    }
+
+    PointF ptStatus(40.0f, 120.0f);
+    g.DrawString(statusText.c_str(), -1, &fontStatus, ptStatus, pStatusBrush);
+
+    // 3.2 Hero Live Speed Readout below status (Y: 142)
     std::wostringstream ssSpeed;
     ssSpeed << std::fixed << std::setprecision(1) << status.instantMBps;
     std::wstring speedStr = ssSpeed.str();
 
-    PointF ptSpeed(40.0f, 118.0f);
+    PointF ptSpeed(40.0f, 142.0f);
     Brush* pSpeedColor = &brushWhite;
     if (status.isRunning) {
         if (status.activeTest.find("Write") != std::string::npos) {
@@ -595,28 +612,11 @@ void MainWindow::OnPaint() {
 
     RectF boundSpeed;
     g.MeasureString(speedStr.c_str(), -1, &fontSpeed, ptSpeed, &boundSpeed);
-    PointF ptUnit(boundSpeed.X + boundSpeed.Width + 8.0f, 142.0f);
+    PointF ptUnit(boundSpeed.X + boundSpeed.Width + 8.0f, 162.0f);
     g.DrawString(L"MB/s", -1, &fontSpeedUnit, ptUnit, &brushMuted);
 
-    // Status label below speed (at Y: 186, giving 16px of clear air)
-    std::wstring statusText = L"\u25CF Ready to benchmark";
-    Brush* pStatusBrush = &brushMuted;
-    if (status.isRunning) {
-        statusText = L"\u25CF " + std::wstring(status.activeTest.begin(), status.activeTest.end());
-        pStatusBrush = (status.activeTest.find("Write") != std::string::npos) ? &brushCyan : &brushEmerald;
-    } else if (status.phase == "Completed") {
-        statusText = L"\u25CF Benchmark Completed";
-        pStatusBrush = &brushEmerald;
-    } else if (status.phase == "Aborted") {
-        statusText = L"\u25CF Benchmark Stopped";
-        pStatusBrush = &brushMuted;
-    }
-
-    PointF ptStatus(40.0f, 186.0f);
-    g.DrawString(statusText.c_str(), -1, &fontStatus, ptStatus, pStatusBrush);
-
-    // Live Stats on the right side of Hero Card (Right-aligned values)
-    float statY = 120.0f;
+    // 3.3 Live Stats on the right side of Hero Card (Y: 124, 148, 172)
+    float statY = 124.0f;
     std::wostringstream ssPeak, ssAvg, ssIOPS;
     ssPeak << std::fixed << std::setprecision(1) << status.peakMBps << L" MB/s";
     ssAvg << std::fixed << std::setprecision(1) << status.averageMBps << L" MB/s";
@@ -637,9 +637,9 @@ void MainWindow::OnPaint() {
     g.DrawString(L"Current IOPS", -1, &fontStatLabel, rIopsLbl, &sfLeft, &brushMuted);
     g.DrawString(ssIOPS.str().c_str(), -1, &fontStatValue, rIopsVal, &sfRight, &brushWhite);
 
-    // Slim Progress Track at card bottom
+    // 3.4 Slim Progress Track at card bottom (Y: 226)
     float pbX = 40.0f;
-    float pbY = 228.0f;
+    float pbY = 226.0f;
     float pbW = 692.0f;
     float pbH = 3.0f;
 
