@@ -1,3 +1,7 @@
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+
 #include "drives.hpp"
 #include <windows.h>
 #include <sstream>

@@ -1,3 +1,7 @@
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+
 #include "benchmark.hpp"
 #include "drives.hpp"
 #include "server.hpp"

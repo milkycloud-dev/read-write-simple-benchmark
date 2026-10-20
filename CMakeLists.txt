@@ -4,6 +4,8 @@ project(rw_benchmark VERSION 1.0.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+add_compile_definitions(NOMINMAX WIN32_LEAN_AND_MEAN)
+
 if(MSVC)
     add_compile_options(/W4 /O2 /permissive-)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
