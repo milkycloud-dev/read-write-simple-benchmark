@@ -38,7 +38,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     SetProcessDPIAware();
 
     int argc = 0;
-    LPWSTR* argv = CommandLineToArgvW(pCmdLine, &argc);
+    LPWSTR* argv = CommandLineToArgvW(GetCommandLineW(), &argc);
     if (argv) {
         for (int i = 0; i < argc; ++i) {
             std::wstring arg = argv[i];
@@ -61,9 +61,22 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
             } else if ((arg == L"--screenshot" || arg == L"-s") && (i + 1 < argc)) {
                 std::wstring outPath = argv[i + 1];
 
+                if (AttachConsole(ATTACH_PARENT_PROCESS)) {
+                    FILE* fp = nullptr;
+                    freopen_s(&fp, "CONOUT$", "w", stdout);
+                    freopen_s(&fp, "CONOUT$", "w", stderr);
+                }
+
                 Gdiplus::GdiplusStartupInput gdiplusStartupInput;
                 ULONG_PTR gdiplusToken = 0;
-                Gdiplus::GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, nullptr);
+                Gdiplus::Status gdiSt = Gdiplus::GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, nullptr);
+                if (gdiSt != Gdiplus::Ok) {
+                    std::wcerr << L"GdiplusStartup failed with status: " << gdiSt << std::endl;
+                    LocalFree(argv);
+                    return 1;
+                }
+
+                int exitCode = 0;
                 {
                     BenchmarkEngine engine;
                     MainWindow win(engine);
@@ -72,17 +85,28 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
                     int w = 640;
                     int h = 404;
                     Gdiplus::Bitmap bmp(w, h, PixelFormat32bppARGB);
-                    Gdiplus::Graphics g(&bmp);
-                    win.Render(g, w, h);
+                    {
+                        Gdiplus::Graphics g(&bmp);
+                        win.Render(g, w, h);
+                    } // Destroy Graphics so Bitmap is unlocked for Save
 
                     CLSID pngClsid;
                     if (GetEncoderClsid(L"image/png", &pngClsid) >= 0) {
-                        bmp.Save(outPath.c_str(), &pngClsid, nullptr);
+                        Gdiplus::Status saveSt = bmp.Save(outPath.c_str(), &pngClsid, nullptr);
+                        if (saveSt != Gdiplus::Ok) {
+                            std::wcerr << L"Failed to save screenshot: " << saveSt << std::endl;
+                            exitCode = 1;
+                        } else {
+                            std::wcout << L"Screenshot saved to: " << outPath << std::endl;
+                        }
+                    } else {
+                        std::wcerr << L"PNG encoder not found" << std::endl;
+                        exitCode = 1;
                     }
                 }
                 Gdiplus::GdiplusShutdown(gdiplusToken);
                 LocalFree(argv);
-                return 0;
+                return exitCode;
             }
         }
         LocalFree(argv);
