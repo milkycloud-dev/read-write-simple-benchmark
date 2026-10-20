@@ -16,6 +16,7 @@ struct DriveInfo {
 
     std::wstring GetDisplayName() const;
     std::wstring GetShortName() const;
+    std::wstring GetVeryShortName() const;
 };
 
 std::vector<DriveInfo> DetectAllDrives();

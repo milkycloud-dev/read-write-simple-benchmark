@@ -33,6 +33,8 @@ private:
     void HandleStartStop();
     void PromptCustomDirectory();
     void ShowDriveMenu();
+    void ShowModeMenu();
+    void ShowSizeMenu();
     int HitTest(int x, int y) const;
 
     BenchmarkEngine& m_engine;
@@ -47,9 +49,13 @@ private:
     // 0: 128 MB, 1: 256 MB, 2: 512 MB, 3: 1 GB
     int m_selectedSize = 1;
 
-    // Hover state: 0=none, 1=drive, 10..13=mode, 20..23=size, 30=start/stop
+    // Hover state: 0=none, 1=mode, 2=size, 3=drive, 4=start/stop
     int m_hoverId = 0;
     bool m_trackingMouse = false;
+
+    // Saved live histories for Write and Read cards
+    std::vector<BenchmarkSample> m_writeHistory;
+    std::vector<BenchmarkSample> m_readHistory;
 
     // Double buffering
     HDC m_hMemDC = nullptr;

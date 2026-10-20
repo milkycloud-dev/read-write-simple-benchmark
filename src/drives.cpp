@@ -43,6 +43,23 @@ std::wstring DriveInfo::GetShortName() const {
     return ss.str();
 }
 
+std::wstring DriveInfo::GetVeryShortName() const {
+    std::wostringstream ss;
+    if (path.length() >= 2) {
+        ss << path.substr(0, 2);
+    } else {
+        ss << path;
+    }
+    if (!fileSystem.empty() && fileSystem != L"Unknown") {
+        ss << L" (" << fileSystem << L")";
+    }
+    if (totalBytes > 0) {
+        double freeGb = static_cast<double>(freeBytes) / (1024.0 * 1024.0 * 1024.0);
+        ss << L" " << std::fixed << std::setprecision(0) << freeGb << L"G";
+    }
+    return ss.str();
+}
+
 std::vector<DriveInfo> DetectAllDrives() {
     std::vector<DriveInfo> list;
 

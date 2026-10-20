@@ -75,15 +75,16 @@ bool MainWindow::Create() {
     WNDCLASSEXW wc = { sizeof(wc) };
     wc.lpfnWndProc = MainWindow::WndProc;
     wc.hInstance = GetModuleHandleW(nullptr);
-    wc.lpszClassName = L"RWBenchMinimalistWindowClass";
+    wc.lpszClassName = L"RWBenchWindowClass";
     wc.hCursor = LoadCursorW(nullptr, IDC_ARROW);
     wc.hbrBackground = nullptr;
     wc.style = CS_HREDRAW | CS_VREDRAW;
 
     RegisterClassExW(&wc);
 
-    int clientW = 780;
-    int clientH = 580;
+    // Compact, balanced window dimensions: 640 x 450 px
+    int clientW = 640;
+    int clientH = 450;
 
     RECT rc = { 0, 0, clientW, clientH };
     AdjustWindowRectEx(&rc, WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX, FALSE, 0);
@@ -104,13 +105,13 @@ bool MainWindow::Create() {
 
     if (!m_hWnd) return false;
 
-    // Windows 10/11 Dark Titlebar
+    // Windows 10/11 Immersive Dark Titlebar
     BOOL darkMode = TRUE;
     DwmSetWindowAttribute(m_hWnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &darkMode, sizeof(darkMode));
 
     PopulateDrives();
 
-    // 30 FPS timer for live rendering
+    // 30 FPS update timer
     SetTimer(m_hWnd, 1001, 33, nullptr);
 
     return true;
@@ -129,33 +130,55 @@ void MainWindow::PopulateDrives() {
 }
 
 int MainWindow::HitTest(int x, int y) const {
-    // 1: Drive Selector Pill (x: 446..756, y: 16..50)
-    if (x >= 446 && x <= 756 && y >= 16 && y <= 50) {
-        return 1;
+    if (y >= 14 && y <= 44) {
+        if (x >= 236 && x <= 320) return 1; // Mode pill
+        if (x >= 326 && x <= 400) return 2; // Size pill
+        if (x >= 406 && x <= 546) return 3; // Drive pill
+        if (x >= 552 && x <= 624) return 4; // Start/Stop button
     }
-
-    // Mode Pills (y: 62..94)
-    if (y >= 62 && y <= 94) {
-        if (x >= 24 && x <= 108)  return 10; // Full Suite (w=84)
-        if (x >= 114 && x <= 194) return 11; // Seq Write  (w=80)
-        if (x >= 200 && x <= 280) return 12; // Seq Read   (w=80)
-        if (x >= 286 && x <= 374) return 13; // Random 4K  (w=88)
-    }
-
-    // Size Pills (y: 62..94)
-    if (y >= 62 && y <= 94) {
-        if (x >= 390 && x <= 442) return 20; // 128 MB (w=52)
-        if (x >= 447 && x <= 499) return 21; // 256 MB (w=52)
-        if (x >= 504 && x <= 556) return 22; // 512 MB (w=52)
-        if (x >= 561 && x <= 611) return 23; // 1 GB   (w=50)
-    }
-
-    // 30: Start / Stop Action Button (x: 626..756, y: 60..94)
-    if (x >= 626 && x <= 756 && y >= 60 && y <= 94) {
-        return 30;
-    }
-
     return 0;
+}
+
+void MainWindow::ShowModeMenu() {
+    HMENU hMenu = CreatePopupMenu();
+    if (!hMenu) return;
+
+    AppendMenuW(hMenu, MF_STRING | (m_selectedMode == 0 ? MF_CHECKED : 0), 2000, L"Full Suite (Seq + 4K)");
+    AppendMenuW(hMenu, MF_STRING | (m_selectedMode == 1 ? MF_CHECKED : 0), 2001, L"Sequential Write Only");
+    AppendMenuW(hMenu, MF_STRING | (m_selectedMode == 2 ? MF_CHECKED : 0), 2002, L"Sequential Read Only");
+    AppendMenuW(hMenu, MF_STRING | (m_selectedMode == 3 ? MF_CHECKED : 0), 2003, L"Random 4K Only");
+
+    POINT pt = { 236, 46 };
+    ClientToScreen(m_hWnd, &pt);
+
+    int cmd = TrackPopupMenuEx(hMenu, TPM_LEFTALIGN | TPM_TOPALIGN | TPM_RETURNCMD, pt.x, pt.y, m_hWnd, nullptr);
+    DestroyMenu(hMenu);
+
+    if (cmd >= 2000 && cmd <= 2003) {
+        m_selectedMode = cmd - 2000;
+        InvalidateRect(m_hWnd, nullptr, FALSE);
+    }
+}
+
+void MainWindow::ShowSizeMenu() {
+    HMENU hMenu = CreatePopupMenu();
+    if (!hMenu) return;
+
+    AppendMenuW(hMenu, MF_STRING | (m_selectedSize == 0 ? MF_CHECKED : 0), 2100, L"128 MB");
+    AppendMenuW(hMenu, MF_STRING | (m_selectedSize == 1 ? MF_CHECKED : 0), 2101, L"256 MB");
+    AppendMenuW(hMenu, MF_STRING | (m_selectedSize == 2 ? MF_CHECKED : 0), 2102, L"512 MB");
+    AppendMenuW(hMenu, MF_STRING | (m_selectedSize == 3 ? MF_CHECKED : 0), 2103, L"1 GB");
+
+    POINT pt = { 326, 46 };
+    ClientToScreen(m_hWnd, &pt);
+
+    int cmd = TrackPopupMenuEx(hMenu, TPM_LEFTALIGN | TPM_TOPALIGN | TPM_RETURNCMD, pt.x, pt.y, m_hWnd, nullptr);
+    DestroyMenu(hMenu);
+
+    if (cmd >= 2100 && cmd <= 2103) {
+        m_selectedSize = cmd - 2100;
+        InvalidateRect(m_hWnd, nullptr, FALSE);
+    }
 }
 
 void MainWindow::ShowDriveMenu() {
@@ -173,7 +196,7 @@ void MainWindow::ShowDriveMenu() {
     AppendMenuW(hMenu, MF_SEPARATOR, 0, nullptr);
     AppendMenuW(hMenu, MF_STRING, 1999, L"Browse Custom Folder...");
 
-    POINT pt = { 446, 52 };
+    POINT pt = { 406, 46 };
     ClientToScreen(m_hWnd, &pt);
 
     int cmd = TrackPopupMenuEx(hMenu, TPM_LEFTALIGN | TPM_TOPALIGN | TPM_RETURNCMD, pt.x, pt.y, m_hWnd, nullptr);
@@ -230,6 +253,10 @@ void MainWindow::HandleStartStop() {
         MessageBoxW(m_hWnd, L"Please select a storage drive first.", L"RW-Bench", MB_ICONWARNING);
         return;
     }
+
+    // Reset saved histories on start
+    m_writeHistory.clear();
+    m_readHistory.clear();
 
     std::wstring targetPath = m_drives[m_selectedDriveIndex].path;
 
@@ -313,18 +340,12 @@ LRESULT MainWindow::HandleMessage(UINT msg, WPARAM wParam, LPARAM lParam) {
             LiveStatus s = m_engine.GetStatus();
 
             if (hit == 1) {
+                if (!s.isRunning) ShowModeMenu();
+            } else if (hit == 2) {
+                if (!s.isRunning) ShowSizeMenu();
+            } else if (hit == 3) {
                 if (!s.isRunning) ShowDriveMenu();
-            } else if (hit >= 10 && hit <= 13) {
-                if (!s.isRunning) {
-                    m_selectedMode = hit - 10;
-                    InvalidateRect(m_hWnd, nullptr, FALSE);
-                }
-            } else if (hit >= 20 && hit <= 23) {
-                if (!s.isRunning) {
-                    m_selectedSize = hit - 20;
-                    InvalidateRect(m_hWnd, nullptr, FALSE);
-                }
-            } else if (hit == 30) {
+            } else if (hit == 4) {
                 HandleStartStop();
             }
             return 0;
@@ -414,7 +435,7 @@ void MainWindow::OnPaint() {
     SolidBrush brushCanvas(Color(255, 13, 17, 23));
     g.FillRectangle(&brushCanvas, 0, 0, width, height);
 
-    // Theme Colors
+    // Cohesive Theme Colors
     Color colorCard(255, 22, 27, 34);         // #161B22
     Color colorBorder(255, 48, 54, 61);       // #30363D
     Color colorPillHover(255, 34, 42, 53);
@@ -435,21 +456,22 @@ void MainWindow::OnPaint() {
     SolidBrush brushCyan(colorActiveBlue);
     SolidBrush brushEmerald(colorEmerald);
 
-    // Native Segoe UI Fonts
-    Font fontBrand(L"Segoe UI", 12.0f, FontStyleBold, UnitPoint);
-    Font fontSubBrand(L"Segoe UI", 8.5f, FontStyleRegular, UnitPoint);
-    Font fontPill(L"Segoe UI", 9.0f, FontStyleRegular, UnitPoint);
-    Font fontPillBold(L"Segoe UI", 9.0f, FontStyleBold, UnitPoint);
-    Font fontSpeed(L"Segoe UI", 38.0f, FontStyleBold, UnitPoint);
-    Font fontSpeedUnit(L"Segoe UI", 12.0f, FontStyleBold, UnitPoint);
-    Font fontStatus(L"Segoe UI", 9.5f, FontStyleBold, UnitPoint);
-    Font fontStatLabel(L"Segoe UI", 9.0f, FontStyleRegular, UnitPoint);
-    Font fontStatValue(L"Segoe UI", 9.0f, FontStyleBold, UnitPoint);
-    Font fontCardTitle(L"Segoe UI", 8.5f, FontStyleBold, UnitPoint);
-    Font fontColLabel(L"Segoe UI", 8.0f, FontStyleBold, UnitPoint);
-    Font fontColValue(L"Segoe UI", 17.0f, FontStyleBold, UnitPoint);
-    Font fontColSub(L"Segoe UI", 8.5f, FontStyleRegular, UnitPoint);
-    Font fontBtn(L"Segoe UI", 10.5f, FontStyleBold, UnitPoint);
+    // Segoe UI Typefaces
+    Font fontTitle(L"Segoe UI", 12.0f, FontStyleBold, UnitPoint);
+    Font fontSubTitle(L"Segoe UI", 8.5f, FontStyleRegular, UnitPoint);
+    Font fontPill(L"Segoe UI", 8.5f, FontStyleBold, UnitPoint);
+    Font fontCardTag(L"Segoe UI", 10.0f, FontStyleBold, UnitPoint);
+    Font fontCardSub(L"Segoe UI", 7.5f, FontStyleBold, UnitPoint);
+    Font fontHeroSpeed(L"Segoe UI", 32.0f, FontStyleBold, UnitPoint);
+    Font fontHeroUnit(L"Segoe UI", 11.5f, FontStyleBold, UnitPoint);
+    Font fontHeroStat(L"Segoe UI", 8.0f, FontStyleRegular, UnitPoint);
+    Font fontThHeader(L"Segoe UI", 8.0f, FontStyleBold, UnitPoint);
+    Font fontRowTitle(L"Segoe UI", 9.5f, FontStyleBold, UnitPoint);
+    Font fontRowSub(L"Segoe UI", 7.5f, FontStyleRegular, UnitPoint);
+    Font fontRowVal(L"Segoe UI", 13.5f, FontStyleBold, UnitPoint);
+    Font fontRowLat(L"Segoe UI", 8.5f, FontStyleRegular, UnitPoint);
+    Font fontBtn(L"Segoe UI", 9.5f, FontStyleBold, UnitPoint);
+    Font fontFooter(L"Segoe UI", 8.5f, FontStyleBold, UnitPoint);
 
     StringFormat sfCenter;
     sfCenter.SetAlignment(StringAlignmentCenter);
@@ -468,267 +490,72 @@ void MainWindow::OnPaint() {
 
     LiveStatus status = m_engine.GetStatus();
 
-    // ==========================================
-    // 1. HEADER ROW: Brand & Drive Pill
-    // Vertically stacked brand to prevent ANY overlap
-    // ==========================================
-    g.DrawString(L"RW-Bench", -1, &fontBrand, PointF(24.0f, 16.0f), &brushWhite);
-    g.DrawString(L"Disk Speed Benchmark", -1, &fontSubBrand, PointF(24.0f, 36.0f), &brushMuted);
-
-    // Drive Selector Pill (x: 446, y: 16, w: 310, h: 34)
-    RectF rectDrive(446.0f, 16.0f, 310.0f, 34.0f);
-    bool driveHover = (m_hoverId == 1 && !status.isRunning);
-    SolidBrush brushDriveBg(driveHover ? colorPillHover : colorCard);
-    FillRoundedRect(g, brushDriveBg, rectDrive, 6.0f);
-    DrawRoundedRect(g, penCard, rectDrive, 6.0f);
-
-    std::wstring driveDisplay = L"No Drives Available";
-    if (!m_drives.empty() && m_selectedDriveIndex >= 0 && m_selectedDriveIndex < static_cast<int>(m_drives.size())) {
-        driveDisplay = m_drives[m_selectedDriveIndex].GetShortName() + L"  \u25BE";
-    }
-    RectF rectDriveText(458.0f, 16.0f, 286.0f, 34.0f);
-    g.DrawString(driveDisplay.c_str(), -1, &fontPillBold, rectDriveText, &sfLeft, &brushWhite);
-
-    // ==========================================
-    // 2. CONTROLS ROW: Mode, Size & Run Button
-    // Generous widths with NoWrap to eliminate clipping
-    // ==========================================
-    struct ModePillDef { const wchar_t* label; float x; float w; };
-    ModePillDef modePills[4] = {
-        { L"Full Suite", 24.0f,  84.0f },
-        { L"Seq Write",  114.0f, 80.0f },
-        { L"Seq Read",   200.0f, 80.0f },
-        { L"Random 4K",  286.0f, 88.0f }
-    };
-
-    Pen penActivePill(colorActiveBlue, 1.2f);
-    for (int i = 0; i < 4; ++i) {
-        RectF rPill(modePills[i].x, 62.0f, modePills[i].w, 32.0f);
-        bool isSel = (m_selectedMode == i);
-        bool isHov = (m_hoverId == (10 + i) && !status.isRunning);
-
-        Color bg = isSel ? Color(255, 38, 44, 56) : (isHov ? colorPillHover : colorCard);
-        SolidBrush bPill(bg);
-        FillRoundedRect(g, bPill, rPill, 5.0f);
-
-        if (isSel) {
-            DrawRoundedRect(g, penActivePill, rPill, 5.0f);
-        } else {
-            DrawRoundedRect(g, penCard, rPill, 5.0f);
-        }
-
-        Brush* pTextBrush = isSel ? &brushWhite : &brushMuted;
-        Font* pFont = isSel ? &fontPillBold : &fontPill;
-        g.DrawString(modePills[i].label, -1, pFont, rPill, &sfCenter, pTextBrush);
-    }
-
-    // Size Pills: [ 128 MB ] [ 256 MB ] [ 512 MB ] [ 1 GB ]
-    ModePillDef sizePills[4] = {
-        { L"128M", 390.0f, 52.0f },
-        { L"256M", 447.0f, 52.0f },
-        { L"512M", 504.0f, 52.0f },
-        { L"1 GB", 561.0f, 50.0f }
-    };
-
-    for (int i = 0; i < 4; ++i) {
-        RectF rPill(sizePills[i].x, 62.0f, sizePills[i].w, 32.0f);
-        bool isSel = (m_selectedSize == i);
-        bool isHov = (m_hoverId == (20 + i) && !status.isRunning);
-
-        Color bg = isSel ? Color(255, 38, 44, 56) : (isHov ? colorPillHover : colorCard);
-        SolidBrush bPill(bg);
-        FillRoundedRect(g, bPill, rPill, 5.0f);
-
-        if (isSel) {
-            DrawRoundedRect(g, penActivePill, rPill, 5.0f);
-        } else {
-            DrawRoundedRect(g, penCard, rPill, 5.0f);
-        }
-
-        Brush* pTextBrush = isSel ? &brushWhite : &brushMuted;
-        Font* pFont = isSel ? &fontPillBold : &fontPill;
-        g.DrawString(sizePills[i].label, -1, pFont, rPill, &sfCenter, pTextBrush);
-    }
-
-    // Action Button: Start / Stop (x: 626, y: 60, w: 130, h: 34)
-    RectF rectBtn(626.0f, 60.0f, 130.0f, 34.0f);
-    bool btnHov = (m_hoverId == 30);
-
-    if (status.isRunning) {
-        Color cStopBg = btnHov ? Color(255, 248, 81, 73) : Color(255, 218, 54, 51);
-        SolidBrush bStop(cStopBg);
-        FillRoundedRect(g, bStop, rectBtn, 6.0f);
-        g.DrawString(L"\u25A0  Stop", -1, &fontBtn, rectBtn, &sfCenter, &brushWhite);
-    } else {
-        Color cStartBg = btnHov ? Color(255, 46, 160, 67) : Color(255, 35, 134, 54);
-        SolidBrush bStart(cStartBg);
-        FillRoundedRect(g, bStart, rectBtn, 6.0f);
-        g.DrawString(L"\u25B6  Run", -1, &fontBtn, rectBtn, &sfCenter, &brushWhite);
-    }
-
-    // ==========================================
-    // 3. HERO SPEED CARD (Y: 108, H: 136, W: 732)
-    // Structured: Status badge top, Speed center, Progress bottom
-    // ==========================================
-    RectF rectHero(24.0f, 108.0f, 732.0f, 136.0f);
-    FillRoundedRect(g, brushCard, rectHero, 8.0f);
-    DrawRoundedRect(g, penCard, rectHero, 8.0f);
-
-    // 3.1 Status label at top of card (Y: 120)
-    std::wstring statusText = L"\u25CF Ready to benchmark";
-    Brush* pStatusBrush = &brushMuted;
-    if (status.isRunning) {
-        statusText = L"\u25CF " + std::wstring(status.activeTest.begin(), status.activeTest.end());
-        pStatusBrush = (status.activeTest.find("Write") != std::string::npos) ? &brushCyan : &brushEmerald;
-    } else if (status.phase == "Completed") {
-        statusText = L"\u25CF Benchmark Completed";
-        pStatusBrush = &brushEmerald;
-    } else if (status.phase == "Aborted") {
-        statusText = L"\u25CF Benchmark Stopped";
-        pStatusBrush = &brushMuted;
-    }
-
-    PointF ptStatus(40.0f, 120.0f);
-    g.DrawString(statusText.c_str(), -1, &fontStatus, ptStatus, pStatusBrush);
-
-    // 3.2 Hero Live Speed Readout below status (Y: 142)
-    std::wostringstream ssSpeed;
-    ssSpeed << std::fixed << std::setprecision(1) << status.instantMBps;
-    std::wstring speedStr = ssSpeed.str();
-
-    PointF ptSpeed(40.0f, 142.0f);
-    Brush* pSpeedColor = &brushWhite;
+    // Cache live history to respective cards
     if (status.isRunning) {
         if (status.activeTest.find("Write") != std::string::npos) {
-            pSpeedColor = &brushCyan;
-        } else {
-            pSpeedColor = &brushEmerald;
+            m_writeHistory = status.history;
+        } else if (status.activeTest.find("Read") != std::string::npos) {
+            m_readHistory = status.history;
         }
-    } else if (status.phase == "Completed") {
-        pSpeedColor = &brushEmerald;
     }
 
-    g.DrawString(speedStr.c_str(), -1, &fontSpeed, ptSpeed, pSpeedColor);
+    // ========================================================
+    // 1. TOP CONTROL BAR (Y: 14 to 44, Height 30px)
+    // ========================================================
+    g.DrawString(L"RW-Bench", -1, &fontTitle, PointF(16.0f, 18.0f), &brushWhite);
+    g.DrawString(L"Disk Speed Benchmark", -1, &fontSubTitle, PointF(96.0f, 21.0f), &brushMuted);
 
-    RectF boundSpeed;
-    g.MeasureString(speedStr.c_str(), -1, &fontSpeed, ptSpeed, &boundSpeed);
-    PointF ptUnit(boundSpeed.X + boundSpeed.Width + 8.0f, 162.0f);
-    g.DrawString(L"MB/s", -1, &fontSpeedUnit, ptUnit, &brushMuted);
+    // 1.1 Mode Pill (x: 236..320, w: 84)
+    RectF rMode(236.0f, 14.0f, 84.0f, 30.0f);
+    bool modeHov = (m_hoverId == 1 && !status.isRunning);
+    SolidBrush bMode(modeHov ? colorPillHover : colorCard);
+    FillRoundedRect(g, bMode, rMode, 5.0f);
+    DrawRoundedRect(g, penCard, rMode, 5.0f);
 
-    // 3.3 Live Stats on the right side of Hero Card (Y: 124, 148, 172)
-    float statY = 124.0f;
-    std::wostringstream ssPeak, ssAvg, ssIOPS;
-    ssPeak << std::fixed << std::setprecision(1) << status.peakMBps << L" MB/s";
-    ssAvg << std::fixed << std::setprecision(1) << status.averageMBps << L" MB/s";
-    ssIOPS << status.currentIOPS;
+    const wchar_t* modeNames[4] = { L"Full Suite \u25BE", L"Write Only \u25BE", L"Read Only \u25BE", L"4K Only \u25BE" };
+    g.DrawString(modeNames[m_selectedMode], -1, &fontPill, rMode, &sfCenter, &brushWhite);
 
-    RectF rPeakLbl(480.0f, statY, 140.0f, 20.0f);
-    RectF rPeakVal(610.0f, statY, 134.0f, 20.0f);
-    g.DrawString(L"Peak Speed", -1, &fontStatLabel, rPeakLbl, &sfLeft, &brushMuted);
-    g.DrawString(ssPeak.str().c_str(), -1, &fontStatValue, rPeakVal, &sfRight, &brushWhite);
+    // 1.2 Size Pill (x: 326..400, w: 74)
+    RectF rSize(326.0f, 14.0f, 74.0f, 30.0f);
+    bool sizeHov = (m_hoverId == 2 && !status.isRunning);
+    SolidBrush bSize(sizeHov ? colorPillHover : colorCard);
+    FillRoundedRect(g, bSize, rSize, 5.0f);
+    DrawRoundedRect(g, penCard, rSize, 5.0f);
 
-    RectF rAvgLbl(480.0f, statY + 24.0f, 140.0f, 20.0f);
-    RectF rAvgVal(610.0f, statY + 24.0f, 134.0f, 20.0f);
-    g.DrawString(L"Average Speed", -1, &fontStatLabel, rAvgLbl, &sfLeft, &brushMuted);
-    g.DrawString(ssAvg.str().c_str(), -1, &fontStatValue, rAvgVal, &sfRight, &brushWhite);
+    const wchar_t* sizeNames[4] = { L"128 MB \u25BE", L"256 MB \u25BE", L"512 MB \u25BE", L"1 GB \u25BE" };
+    g.DrawString(sizeNames[m_selectedSize], -1, &fontPill, rSize, &sfCenter, &brushWhite);
 
-    RectF rIopsLbl(480.0f, statY + 48.0f, 140.0f, 20.0f);
-    RectF rIopsVal(610.0f, statY + 48.0f, 134.0f, 20.0f);
-    g.DrawString(L"Current IOPS", -1, &fontStatLabel, rIopsLbl, &sfLeft, &brushMuted);
-    g.DrawString(ssIOPS.str().c_str(), -1, &fontStatValue, rIopsVal, &sfRight, &brushWhite);
+    // 1.3 Drive Pill (x: 406..546, w: 140)
+    RectF rDrive(406.0f, 14.0f, 140.0f, 30.0f);
+    bool driveHov = (m_hoverId == 3 && !status.isRunning);
+    SolidBrush bDrive(driveHov ? colorPillHover : colorCard);
+    FillRoundedRect(g, bDrive, rDrive, 5.0f);
+    DrawRoundedRect(g, penCard, rDrive, 5.0f);
 
-    // 3.4 Slim Progress Track at card bottom (Y: 226)
-    float pbX = 40.0f;
-    float pbY = 226.0f;
-    float pbW = 692.0f;
-    float pbH = 3.0f;
+    std::wstring driveShort = L"No Drives \u25BE";
+    if (!m_drives.empty() && m_selectedDriveIndex >= 0 && m_selectedDriveIndex < static_cast<int>(m_drives.size())) {
+        driveShort = m_drives[m_selectedDriveIndex].GetVeryShortName() + L" \u25BE";
+    }
+    RectF rDriveText(414.0f, 14.0f, 126.0f, 30.0f);
+    g.DrawString(driveShort.c_str(), -1, &fontPill, rDriveText, &sfLeft, &brushWhite);
 
-    SolidBrush brushPbTrack(Color(255, 33, 38, 45));
-    RectF rectPbTrack(pbX, pbY, pbW, pbH);
-    FillRoundedRect(g, brushPbTrack, rectPbTrack, 1.5f);
+    // 1.4 Start / Stop Action Button (x: 552..624, w: 72)
+    RectF rBtn(552.0f, 14.0f, 72.0f, 30.0f);
+    bool btnHov = (m_hoverId == 4);
 
-    float fillW = pbW * (status.progress / 100.0f);
-    if (fillW > 2.0f) {
-        SolidBrush brushPbFill(colorActiveBlue);
-        RectF rectPbFill(pbX, pbY, fillW, pbH);
-        FillRoundedRect(g, brushPbFill, rectPbFill, 1.5f);
+    if (status.isRunning) {
+        Color cStop = btnHov ? Color(255, 248, 81, 73) : Color(255, 218, 54, 51);
+        SolidBrush bStop(cStop);
+        FillRoundedRect(g, bStop, rBtn, 5.0f);
+        g.DrawString(L"\u25A0 Stop", -1, &fontBtn, rBtn, &sfCenter, &brushWhite);
+    } else {
+        Color cStart = btnHov ? Color(255, 46, 160, 67) : Color(255, 35, 134, 54);
+        SolidBrush bStart(cStart);
+        FillRoundedRect(g, bStart, rBtn, 5.0f);
+        g.DrawString(L"\u25B6 Run", -1, &fontBtn, rBtn, &sfCenter, &brushWhite);
     }
 
-    // ==========================================
-    // 4. THROUGHPUT GRAPH CARD (Y: 254, H: 156, W: 732)
-    // ==========================================
-    RectF rectGraph(24.0f, 254.0f, 732.0f, 156.0f);
-    FillRoundedRect(g, brushCard, rectGraph, 8.0f);
-    DrawRoundedRect(g, penCard, rectGraph, 8.0f);
-
-    g.DrawString(L"THROUGHPUT HISTORY", -1, &fontCardTitle, PointF(40.0f, 264.0f), &brushMuted);
-
-    float plotX = 40.0f;
-    float plotY = 286.0f;
-    float plotW = 676.0f;
-    float plotH = 110.0f;
-
-    // Faint baseline guides
-    g.DrawLine(&penDivider, plotX, plotY + (plotH / 2.0f), plotX + plotW, plotY + (plotH / 2.0f));
-    g.DrawLine(&penDivider, plotX, plotY + plotH, plotX + plotW, plotY + plotH);
-
-    double maxSpeed = 100.0;
-    for (const auto& smp : status.history) {
-        if (smp.instantMBps > maxSpeed) maxSpeed = smp.instantMBps;
-    }
-    maxSpeed *= 1.15;
-
-    std::wostringstream ssMaxScale;
-    ssMaxScale << std::fixed << std::setprecision(0) << maxSpeed << L" MB/s";
-    RectF rectMaxScale(plotX, 264.0f, plotW, 16.0f);
-    g.DrawString(ssMaxScale.str().c_str(), -1, &fontSubBrand, rectMaxScale, &sfRight, &brushDim);
-
-    if (status.history.size() >= 2) {
-        std::vector<PointF> pts;
-        float stepX = plotW / static_cast<float>(status.history.size() - 1);
-
-        for (size_t i = 0; i < status.history.size(); ++i) {
-            float px = plotX + static_cast<float>(i) * stepX;
-            float py = plotY + plotH - static_cast<float>((status.history[i].instantMBps / maxSpeed) * plotH);
-            if (py < plotY) py = plotY;
-            if (py > plotY + plotH) py = plotY + plotH;
-            pts.push_back(PointF(px, py));
-        }
-
-        // Soft semi-transparent gradient fill under line
-        GraphicsPath fillPath;
-        fillPath.AddLine(PointF(plotX, plotY + plotH), pts[0]);
-        for (size_t i = 1; i < pts.size(); ++i) {
-            fillPath.AddLine(pts[i - 1], pts[i]);
-        }
-        fillPath.AddLine(pts.back(), PointF(pts.back().X, plotY + plotH));
-        fillPath.CloseFigure();
-
-        SolidBrush brushArea(Color(35, 88, 166, 255));
-        g.FillPath(&brushArea, &fillPath);
-
-        // Smooth curve
-        Pen penCurve(colorActiveBlue, 1.8f);
-        for (size_t i = 1; i < pts.size(); ++i) {
-            g.DrawLine(&penCurve, pts[i - 1], pts[i]);
-        }
-
-        // Glowing pulse head point
-        PointF head = pts.back();
-        SolidBrush brushHead(colorActiveBlue);
-        g.FillEllipse(&brushHead, head.X - 3.5f, head.Y - 3.5f, 7.0f, 7.0f);
-    }
-
-    // ==========================================
-    // 5. RESULTS SUMMARY CARD (Y: 420, H: 140, W: 732)
-    // Generous vertical spacing: Header Y:432, Value Y:456, Sub Y:510
-    // ==========================================
-    RectF rectResults(24.0f, 420.0f, 732.0f, 140.0f);
-    FillRoundedRect(g, brushCard, rectResults, 8.0f);
-    DrawRoundedRect(g, penCard, rectResults, 8.0f);
-
-    float colW = 732.0f / 4.0f;
-
+    // Helper to find completed results
     auto findResult = [&](const std::string& key1, const std::string& key2) -> const BenchmarkResult* {
         for (const auto& r : status.completedResults) {
             if (r.testName.find(key1) != std::string::npos && r.testName.find(key2) != std::string::npos) {
@@ -738,60 +565,352 @@ void MainWindow::OnPaint() {
         return nullptr;
     };
 
-    struct ColData {
-        const wchar_t* label;
-        const BenchmarkResult* res;
-        bool isWriting;
-        bool isCurrentlyRunning;
-    };
+    const BenchmarkResult* resSeqW = findResult("Sequential", "Write");
+    const BenchmarkResult* resSeqR = findResult("Sequential", "Read");
+    const BenchmarkResult* res4KW  = findResult("Random", "Write");
+    const BenchmarkResult* res4KR  = findResult("Random", "Read");
 
-    ColData cols[4] = {
-        { L"SEQ WRITE (1M)", findResult("Sequential", "Write"), true,
-          status.isRunning && status.activeTest.find("Sequential Write") != std::string::npos },
-        { L"SEQ READ (1M)",  findResult("Sequential", "Read"), false,
-          status.isRunning && status.activeTest.find("Sequential Read") != std::string::npos },
-        { L"RND 4K WRITE",   findResult("Random", "Write"), true,
-          status.isRunning && status.activeTest.find("Random 4K Write") != std::string::npos },
-        { L"RND 4K READ",    findResult("Random", "Read"), false,
-          status.isRunning && status.activeTest.find("Random 4K Read") != std::string::npos }
-    };
+    bool isWriting = status.isRunning && (status.activeTest.find("Write") != std::string::npos);
+    bool isReading = status.isRunning && (status.activeTest.find("Read") != std::string::npos);
 
-    for (int i = 0; i < 4; ++i) {
-        float cx = 24.0f + colW * i;
+    // ========================================================
+    // 2. DUAL HERO CARDS (Y: 52 to 216, Height 164px)
+    // Left: WRITE SPEED | Right: READ SPEED
+    // ========================================================
+    float cardW = 298.0f;
+    float cardH = 164.0f;
+    float cardY = 52.0f;
 
-        if (i > 0) {
-            g.DrawLine(&penDivider, cx, 432.0f, cx, 546.0f);
+    // --------------------------------------------------------
+    // 2.1 LEFT CARD: WRITE SPEED
+    // --------------------------------------------------------
+    RectF rWriteCard(16.0f, cardY, cardW, cardH);
+    FillRoundedRect(g, brushCard, rWriteCard, 7.0f);
+    DrawRoundedRect(g, penCard, rWriteCard, 7.0f);
+
+    // Header Tag
+    g.DrawString(L"WRITE", -1, &fontCardTag, PointF(28.0f, 62.0f), &brushCyan);
+
+    std::wstring writeTag = L"DIRECT I/O";
+    Brush* pWriteTagBrush = &brushMuted;
+    if (isWriting) {
+        writeTag = L"\u25CF ACTIVE";
+        pWriteTagBrush = &brushCyan;
+    } else if (resSeqW) {
+        writeTag = L"\u25CF FINISHED";
+        pWriteTagBrush = &brushMuted;
+    }
+    RectF rWTagRight(16.0f, 64.0f, cardW - 24.0f, 16.0f);
+    g.DrawString(writeTag.c_str(), -1, &fontCardSub, rWTagRight, &sfRight, pWriteTagBrush);
+
+    // Speed Value
+    std::wstring wSpeedNum = L"--";
+    double wPeak = 0.0, wAvg = 0.0;
+    uint32_t wIops = 0;
+
+    if (isWriting) {
+        std::wostringstream ss;
+        ss << std::fixed << std::setprecision(1) << status.instantMBps;
+        wSpeedNum = ss.str();
+        wPeak = status.peakMBps;
+        wAvg = status.averageMBps;
+        wIops = status.currentIOPS;
+    } else if (resSeqW) {
+        std::wostringstream ss;
+        ss << std::fixed << std::setprecision(1) << resSeqW->avgMBps;
+        wSpeedNum = ss.str();
+        wPeak = resSeqW->peakMBps;
+        wAvg = resSeqW->avgMBps;
+        wIops = resSeqW->avgIOPS;
+    }
+
+    PointF ptWSpeed(28.0f, 84.0f);
+    Brush* pWNumBrush = isWriting ? &brushCyan : (wSpeedNum == L"--" ? &brushDim : &brushWhite);
+    g.DrawString(wSpeedNum.c_str(), -1, &fontHeroSpeed, ptWSpeed, pWNumBrush);
+
+    RectF boundWSpeed;
+    g.MeasureString(wSpeedNum.c_str(), -1, &fontHeroSpeed, ptWSpeed, &boundWSpeed);
+    PointF ptWUnit(boundWSpeed.X + boundWSpeed.Width + 6.0f, 102.0f);
+    g.DrawString(L"MB/s", -1, &fontHeroUnit, ptWUnit, &brushMuted);
+
+    // Write Sub-metric
+    std::wostringstream ssWSub;
+    if (wPeak > 0.0) {
+        ssWSub << L"Peak: " << std::fixed << std::setprecision(0) << wPeak << L" MB/s   Avg: " << wAvg << L" MB/s";
+    } else {
+        ssWSub << L"Direct physical write throughput";
+    }
+    g.DrawString(ssWSub.str().c_str(), -1, &fontHeroStat, PointF(28.0f, 134.0f), &brushMuted);
+
+    // Mini Sparkline inside Write card (Y: 154 to 206, H: 52px)
+    float spWX = 28.0f;
+    float spWY = 154.0f;
+    float spWW = cardW - 24.0f;
+    float spWH = 50.0f;
+
+    g.DrawLine(&penDivider, spWX, spWY + spWH, spWX + spWW, spWY + spWH);
+
+    const auto& wHist = isWriting ? status.history : m_writeHistory;
+    if (wHist.size() >= 2) {
+        double maxW = 50.0;
+        for (const auto& smp : wHist) if (smp.instantMBps > maxW) maxW = smp.instantMBps;
+        maxW *= 1.15;
+
+        std::vector<PointF> pts;
+        float stepX = spWW / static_cast<float>(wHist.size() - 1);
+        for (size_t i = 0; i < wHist.size(); ++i) {
+            float px = spWX + static_cast<float>(i) * stepX;
+            float py = spWY + spWH - static_cast<float>((wHist[i].instantMBps / maxW) * spWH);
+            if (py < spWY) py = spWY;
+            if (py > spWY + spWH) py = spWY + spWH;
+            pts.push_back(PointF(px, py));
         }
 
-        // Header Label
-        g.DrawString(cols[i].label, -1, &fontColLabel, PointF(cx + 18.0f, 432.0f), &brushMuted);
+        GraphicsPath fillPath;
+        fillPath.AddLine(PointF(spWX, spWY + spWH), pts[0]);
+        for (size_t i = 1; i < pts.size(); ++i) fillPath.AddLine(pts[i - 1], pts[i]);
+        fillPath.AddLine(pts.back(), PointF(pts.back().X, spWY + spWH));
+        fillPath.CloseFigure();
 
-        // Main Speed Value
-        if (cols[i].res) {
-            std::wostringstream ssVal;
-            ssVal << std::fixed << std::setprecision(1) << cols[i].res->avgMBps << L" MB/s";
-            Brush* pColor = cols[i].isWriting ? &brushCyan : &brushEmerald;
-            g.DrawString(ssVal.str().c_str(), -1, &fontColValue, PointF(cx + 18.0f, 456.0f), pColor);
+        SolidBrush areaBrush(Color(30, 88, 166, 255));
+        g.FillPath(&areaBrush, &fillPath);
 
-            std::wostringstream ssSub;
-            if (i < 2) {
-                ssSub << L"Peak: " << std::fixed << std::setprecision(0) << cols[i].res->peakMBps << L" MB/s";
-            } else {
-                ssSub << cols[i].res->avgIOPS << L" IOPS";
-            }
-            g.DrawString(ssSub.str().c_str(), -1, &fontColSub, PointF(cx + 18.0f, 510.0f), &brushMuted);
-        } else if (cols[i].isCurrentlyRunning) {
-            std::wostringstream ssVal;
-            ssVal << std::fixed << std::setprecision(1) << status.instantMBps << L" MB/s";
-            g.DrawString(ssVal.str().c_str(), -1, &fontColValue, PointF(cx + 18.0f, 456.0f), &brushCyan);
-            g.DrawString(L"Running...", -1, &fontColSub, PointF(cx + 18.0f, 510.0f), &brushEmerald);
-        } else {
-            g.DrawString(L"-- MB/s", -1, &fontColValue, PointF(cx + 18.0f, 456.0f), &brushDim);
-            g.DrawString(L"Pending", -1, &fontColSub, PointF(cx + 18.0f, 510.0f), &brushDim);
+        Pen penCurve(colorActiveBlue, 1.5f);
+        for (size_t i = 1; i < pts.size(); ++i) g.DrawLine(&penCurve, pts[i - 1], pts[i]);
+
+        if (isWriting) {
+            PointF head = pts.back();
+            SolidBrush bHead(colorActiveBlue);
+            g.FillEllipse(&bHead, head.X - 3.0f, head.Y - 3.0f, 6.0f, 6.0f);
         }
     }
 
-    // Blit to Screen (Double Buffer Complete)
+    // --------------------------------------------------------
+    // 2.2 RIGHT CARD: READ SPEED
+    // --------------------------------------------------------
+    RectF rReadCard(326.0f, cardY, cardW, cardH);
+    FillRoundedRect(g, brushCard, rReadCard, 7.0f);
+    DrawRoundedRect(g, penCard, rReadCard, 7.0f);
+
+    // Header Tag
+    g.DrawString(L"READ", -1, &fontCardTag, PointF(338.0f, 62.0f), &brushEmerald);
+
+    std::wstring readTag = L"DIRECT I/O";
+    Brush* pReadTagBrush = &brushMuted;
+    if (isReading) {
+        readTag = L"\u25CF ACTIVE";
+        pReadTagBrush = &brushEmerald;
+    } else if (resSeqR) {
+        readTag = L"\u25CF FINISHED";
+        pReadTagBrush = &brushMuted;
+    }
+    RectF rRTagRight(326.0f, 64.0f, cardW - 24.0f, 16.0f);
+    g.DrawString(readTag.c_str(), -1, &fontCardSub, rRTagRight, &sfRight, pReadTagBrush);
+
+    // Read Speed Value
+    std::wstring rSpeedNum = L"--";
+    double rPeak = 0.0, rAvg = 0.0;
+    uint32_t rIops = 0;
+
+    if (isReading) {
+        std::wostringstream ss;
+        ss << std::fixed << std::setprecision(1) << status.instantMBps;
+        rSpeedNum = ss.str();
+        rPeak = status.peakMBps;
+        rAvg = status.averageMBps;
+        rIops = status.currentIOPS;
+    } else if (resSeqR) {
+        std::wostringstream ss;
+        ss << std::fixed << std::setprecision(1) << resSeqR->avgMBps;
+        rSpeedNum = ss.str();
+        rPeak = resSeqR->peakMBps;
+        rAvg = resSeqR->avgMBps;
+        rIops = resSeqR->avgIOPS;
+    }
+
+    PointF ptRSpeed(338.0f, 84.0f);
+    Brush* pRNumBrush = isReading ? &brushEmerald : (rSpeedNum == L"--" ? &brushDim : &brushWhite);
+    g.DrawString(rSpeedNum.c_str(), -1, &fontHeroSpeed, ptRSpeed, pRNumBrush);
+
+    RectF boundRSpeed;
+    g.MeasureString(rSpeedNum.c_str(), -1, &fontHeroSpeed, ptRSpeed, &boundRSpeed);
+    PointF ptRUnit(boundRSpeed.X + boundRSpeed.Width + 6.0f, 102.0f);
+    g.DrawString(L"MB/s", -1, &fontHeroUnit, ptRUnit, &brushMuted);
+
+    // Read Sub-metric
+    std::wostringstream ssRSub;
+    if (rPeak > 0.0) {
+        ssRSub << L"Peak: " << std::fixed << std::setprecision(0) << rPeak << L" MB/s   Avg: " << rAvg << L" MB/s";
+    } else {
+        ssRSub << L"Direct unbuffered read throughput";
+    }
+    g.DrawString(ssRSub.str().c_str(), -1, &fontHeroStat, PointF(338.0f, 134.0f), &brushMuted);
+
+    // Mini Sparkline inside Read card (Y: 154 to 206, H: 52px)
+    float spRX = 338.0f;
+    float spRY = 154.0f;
+    float spRW = cardW - 24.0f;
+    float spRH = 50.0f;
+
+    g.DrawLine(&penDivider, spRX, spRY + spRH, spRX + spRW, spRY + spRH);
+
+    const auto& rHist = isReading ? status.history : m_readHistory;
+    if (rHist.size() >= 2) {
+        double maxR = 50.0;
+        for (const auto& smp : rHist) if (smp.instantMBps > maxR) maxR = smp.instantMBps;
+        maxR *= 1.15;
+
+        std::vector<PointF> pts;
+        float stepX = spRW / static_cast<float>(rHist.size() - 1);
+        for (size_t i = 0; i < rHist.size(); ++i) {
+            float px = spRX + static_cast<float>(i) * stepX;
+            float py = spRY + spRH - static_cast<float>((rHist[i].instantMBps / maxR) * spRH);
+            if (py < spRY) py = spRY;
+            if (py > spRY + spRH) py = spRY + spRH;
+            pts.push_back(PointF(px, py));
+        }
+
+        GraphicsPath fillPath;
+        fillPath.AddLine(PointF(spRX, spRY + spRH), pts[0]);
+        for (size_t i = 1; i < pts.size(); ++i) fillPath.AddLine(pts[i - 1], pts[i]);
+        fillPath.AddLine(pts.back(), PointF(pts.back().X, spRY + spRH));
+        fillPath.CloseFigure();
+
+        SolidBrush areaBrush(Color(30, 63, 185, 80));
+        g.FillPath(&areaBrush, &fillPath);
+
+        Pen penCurve(colorEmerald, 1.5f);
+        for (size_t i = 1; i < pts.size(); ++i) g.DrawLine(&penCurve, pts[i - 1], pts[i]);
+
+        if (isReading) {
+            PointF head = pts.back();
+            SolidBrush bHead(colorEmerald);
+            g.FillEllipse(&bHead, head.X - 3.0f, head.Y - 3.0f, 6.0f, 6.0f);
+        }
+    }
+
+    // ========================================================
+    // 3. DETAILED RESULTS BREAKDOWN TABLE CARD (Y: 226 to 434, Height 208px)
+    // ========================================================
+    RectF rTable(16.0f, 226.0f, 608.0f, 208.0f);
+    FillRoundedRect(g, brushCard, rTable, 7.0f);
+    DrawRoundedRect(g, penCard, rTable, 7.0f);
+
+    // 3.1 Table Header Row (Y = 236)
+    g.DrawString(L"TEST PROFILE", -1, &fontThHeader, PointF(30.0f, 236.0f), &brushMuted);
+    g.DrawString(L"WRITE SPEED", -1, &fontThHeader, PointF(230.0f, 236.0f), &brushCyan);
+    g.DrawString(L"READ SPEED",  -1, &fontThHeader, PointF(370.0f, 236.0f), &brushEmerald);
+    g.DrawString(L"LATENCY / IOPS", -1, &fontThHeader, PointF(500.0f, 236.0f), &brushMuted);
+
+    g.DrawLine(&penDivider, 24.0f, 254.0f, 616.0f, 254.0f);
+
+    // 3.2 Row 1: Sequential 1MB (Y: 260 to 304)
+    g.DrawString(L"Sequential (1 MB)", -1, &fontRowTitle, PointF(30.0f, 260.0f), &brushWhite);
+    g.DrawString(L"Continuous block stream", -1, &fontRowSub, PointF(30.0f, 278.0f), &brushMuted);
+
+    // Seq Write cell
+    if (resSeqW) {
+        std::wostringstream ss; ss << std::fixed << std::setprecision(1) << resSeqW->avgMBps << L" MB/s";
+        g.DrawString(ss.str().c_str(), -1, &fontRowVal, PointF(230.0f, 264.0f), &brushCyan);
+    } else if (isWriting && status.activeTest.find("Sequential") != std::string::npos) {
+        std::wostringstream ss; ss << std::fixed << std::setprecision(1) << status.instantMBps << L" MB/s";
+        g.DrawString(ss.str().c_str(), -1, &fontRowVal, PointF(230.0f, 264.0f), &brushCyan);
+    } else {
+        g.DrawString(L"-- MB/s", -1, &fontRowVal, PointF(230.0f, 264.0f), &brushDim);
+    }
+
+    // Seq Read cell
+    if (resSeqR) {
+        std::wostringstream ss; ss << std::fixed << std::setprecision(1) << resSeqR->avgMBps << L" MB/s";
+        g.DrawString(ss.str().c_str(), -1, &fontRowVal, PointF(370.0f, 264.0f), &brushEmerald);
+    } else if (isReading && status.activeTest.find("Sequential") != std::string::npos) {
+        std::wostringstream ss; ss << std::fixed << std::setprecision(1) << status.instantMBps << L" MB/s";
+        g.DrawString(ss.str().c_str(), -1, &fontRowVal, PointF(370.0f, 264.0f), &brushEmerald);
+    } else {
+        g.DrawString(L"-- MB/s", -1, &fontRowVal, PointF(370.0f, 264.0f), &brushDim);
+    }
+
+    // Seq Latency / IOPS
+    if (resSeqW || resSeqR) {
+        double lat = resSeqR ? resSeqR->avgLatencyMs : resSeqW->avgLatencyMs;
+        std::wostringstream ss; ss << std::fixed << std::setprecision(2) << lat << L" ms";
+        g.DrawString(ss.str().c_str(), -1, &fontRowLat, PointF(500.0f, 268.0f), &brushWhite);
+    } else {
+        g.DrawString(L"--", -1, &fontRowLat, PointF(500.0f, 268.0f), &brushDim);
+    }
+
+    g.DrawLine(&penDivider, 24.0f, 308.0f, 616.0f, 308.0f);
+
+    // 3.3 Row 2: Random 4K (Y: 314 to 358)
+    g.DrawString(L"Random 4K", -1, &fontRowTitle, PointF(30.0f, 314.0f), &brushWhite);
+    g.DrawString(L"4 KiB sector aligned IOPS", -1, &fontRowSub, PointF(30.0f, 332.0f), &brushMuted);
+
+    // 4K Write cell
+    if (res4KW) {
+        std::wostringstream ss; ss << std::fixed << std::setprecision(1) << res4KW->avgMBps << L" MB/s";
+        g.DrawString(ss.str().c_str(), -1, &fontRowVal, PointF(230.0f, 318.0f), &brushCyan);
+    } else if (isWriting && status.activeTest.find("Random") != std::string::npos) {
+        std::wostringstream ss; ss << std::fixed << std::setprecision(1) << status.instantMBps << L" MB/s";
+        g.DrawString(ss.str().c_str(), -1, &fontRowVal, PointF(230.0f, 318.0f), &brushCyan);
+    } else {
+        g.DrawString(L"-- MB/s", -1, &fontRowVal, PointF(230.0f, 318.0f), &brushDim);
+    }
+
+    // 4K Read cell
+    if (res4KR) {
+        std::wostringstream ss; ss << std::fixed << std::setprecision(1) << res4KR->avgMBps << L" MB/s";
+        g.DrawString(ss.str().c_str(), -1, &fontRowVal, PointF(370.0f, 318.0f), &brushEmerald);
+    } else if (isReading && status.activeTest.find("Random") != std::string::npos) {
+        std::wostringstream ss; ss << std::fixed << std::setprecision(1) << status.instantMBps << L" MB/s";
+        g.DrawString(ss.str().c_str(), -1, &fontRowVal, PointF(370.0f, 318.0f), &brushEmerald);
+    } else {
+        g.DrawString(L"-- MB/s", -1, &fontRowVal, PointF(370.0f, 318.0f), &brushDim);
+    }
+
+    // 4K IOPS cell
+    if (res4KR || res4KW) {
+        uint32_t iops = res4KR ? res4KR->avgIOPS : res4KW->avgIOPS;
+        std::wostringstream ss; ss << iops << L" IOPS";
+        g.DrawString(ss.str().c_str(), -1, &fontRowLat, PointF(500.0f, 322.0f), &brushWhite);
+    } else {
+        g.DrawString(L"--", -1, &fontRowLat, PointF(500.0f, 322.0f), &brushDim);
+    }
+
+    g.DrawLine(&penDivider, 24.0f, 362.0f, 616.0f, 362.0f);
+
+    // 3.4 Footer Status & Slim Progress Bar (Y: 374 to 420)
+    std::wstring footStatus = L"\u25CF Ready to benchmark";
+    Brush* pFootBrush = &brushMuted;
+    if (status.isRunning) {
+        footStatus = L"\u25CF Running " + std::wstring(status.activeTest.begin(), status.activeTest.end());
+        pFootBrush = isWriting ? &brushCyan : &brushEmerald;
+    } else if (status.phase == "Completed") {
+        footStatus = L"\u25CF Benchmark Completed";
+        pFootBrush = &brushEmerald;
+    } else if (status.phase == "Aborted") {
+        footStatus = L"\u25CF Benchmark Stopped";
+        pFootBrush = &brushMuted;
+    }
+    g.DrawString(footStatus.c_str(), -1, &fontFooter, PointF(30.0f, 376.0f), pFootBrush);
+
+    // Slim Progress Track
+    float pbX = 30.0f;
+    float pbY = 404.0f;
+    float pbW = 580.0f;
+    float pbH = 3.0f;
+
+    SolidBrush brushPbTrack(Color(255, 33, 38, 45));
+    RectF rectPbTrack(pbX, pbY, pbW, pbH);
+    FillRoundedRect(g, brushPbTrack, rectPbTrack, 1.5f);
+
+    float fillW = pbW * (status.progress / 100.0f);
+    if (fillW > 2.0f) {
+        SolidBrush brushPbFill(isWriting ? colorActiveBlue : colorEmerald);
+        RectF rectPbFill(pbX, pbY, fillW, pbH);
+        FillRoundedRect(g, brushPbFill, rectPbFill, 1.5f);
+    }
+
+    // Blit Double Buffer to Screen
     HDC hdcScreen = GetDC(m_hWnd);
     BitBlt(hdcScreen, 0, 0, width, height, m_hMemDC, 0, 0, SRCCOPY);
     ReleaseDC(m_hWnd, hdcScreen);
