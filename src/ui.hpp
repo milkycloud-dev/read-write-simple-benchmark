@@ -1,9 +1,14 @@
 #pragma once
 
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+
 #include <windows.h>
+#include <objidl.h>
+#include <gdiplus.h>
 #include <string>
 #include <vector>
-#include <memory>
 #include "benchmark.hpp"
 #include "drives.hpp"
 
@@ -36,7 +41,6 @@ private:
     HWND m_cbSize = nullptr;
     HWND m_cbMode = nullptr;
     HWND m_btnStart = nullptr;
-    HWND m_btnCopy = nullptr;
 
     HFONT m_hFontUI = nullptr;
     HFONT m_hFontTitle = nullptr;
@@ -47,7 +51,7 @@ private:
     int m_selectedDriveIndex = 0;
     std::wstring m_customPath;
 
-    // Double buffering memory DC & Bitmap
+    // Double buffering
     HDC m_hMemDC = nullptr;
     HBITMAP m_hMemBitmap = nullptr;
     HBITMAP m_hOldBitmap = nullptr;
