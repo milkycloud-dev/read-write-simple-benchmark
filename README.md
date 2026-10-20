@@ -1,4 +1,4 @@
-# RW-Bench (2026 Edition)
+# RW-Bench
 
 [![CI Build & Release](https://github.com/milkycloud-dev/read-write-simple-benchmark/actions/workflows/build-and-release.yml/badge.svg)](https://github.com/milkycloud-dev/read-write-simple-benchmark/actions/workflows/build-and-release.yml)
 [![Platform](https://img.shields.io/badge/Platform-Windows%20x64-blue.svg)](https://github.com/milkycloud-dev/read-write-simple-benchmark)
@@ -6,7 +6,7 @@
 [![GUI](https://img.shields.io/badge/GUI-Native%20Win32%2FGDI%2B-green.svg)](https://github.com/milkycloud-dev/read-write-simple-benchmark)
 [![License](https://img.shields.io/badge/License-Proprietary-red.svg)](LICENSE)
 
-A high-performance, native Windows storage throughput benchmarker written in modern **C++20** with a clean **Material 3 Dark** native desktop interface. Designed for precision, minimal overhead, and zero external dependencies.
+A simple disk read/write speed benchmark utility for Windows written in C++ with a native Win32/GDI+ dark interface.
 
 ---
 

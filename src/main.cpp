@@ -27,8 +27,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
                     FILE* fp = nullptr;
                     freopen_s(&fp, "CONOUT$", "w", stdout);
                     std::cout << "=================================================\n";
-                    std::cout << "  RW-BENCH 2026 EDITION - Storage Speed Benchmark\n";
-                    std::cout << "  MilkyCloud Technologies - Direct I/O Engine\n";
+                    std::cout << "  RW-BENCH - Disk Speed Benchmark\n";
                     std::cout << "=================================================\n\n";
 
                     std::cout << "Detecting storage drives...\n";

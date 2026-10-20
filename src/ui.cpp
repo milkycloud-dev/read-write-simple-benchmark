@@ -96,7 +96,7 @@ bool MainWindow::Create() {
     m_hWnd = CreateWindowExW(
         0,
         wc.lpszClassName,
-        L"RW-BENCH \u2022 Disk Speed Benchmark",
+        L"RW-Bench",
         WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
         posX, posY, winW, winH,
         nullptr, nullptr, wc.hInstance, this
@@ -472,8 +472,8 @@ void MainWindow::OnPaint() {
     // 1. HEADER ROW: Brand & Drive Pill
     // Vertically stacked brand to prevent ANY overlap
     // ==========================================
-    g.DrawString(L"RW\u2022BENCH", -1, &fontBrand, PointF(24.0f, 16.0f), &brushWhite);
-    g.DrawString(L"Direct I/O Storage Benchmark", -1, &fontSubBrand, PointF(24.0f, 36.0f), &brushMuted);
+    g.DrawString(L"RW-Bench", -1, &fontBrand, PointF(24.0f, 16.0f), &brushWhite);
+    g.DrawString(L"Disk Speed Benchmark", -1, &fontSubBrand, PointF(24.0f, 36.0f), &brushMuted);
 
     // Drive Selector Pill (x: 446, y: 16, w: 310, h: 34)
     RectF rectDrive(446.0f, 16.0f, 310.0f, 34.0f);
