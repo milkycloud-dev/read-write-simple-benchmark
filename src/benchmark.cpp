@@ -245,7 +245,9 @@ bool BenchmarkEngine::RunSequentialWrite(const std::wstring& filePath, uint64_t 
     uint32_t ioCount = 0;
 
     while (bytesWrittenTotal < targetSize && !m_shouldStop.load()) {
-        DWORD toWrite = static_cast<DWORD>((std::min)<uint64_t>(blockSize, targetSize - bytesWrittenTotal));
+        uint64_t remaining = targetSize - bytesWrittenTotal;
+        uint64_t chunk = (static_cast<uint64_t>(blockSize) < remaining) ? static_cast<uint64_t>(blockSize) : remaining;
+        DWORD toWrite = static_cast<DWORD>(chunk);
         // Ensure toWrite is sector aligned
         if (toWrite % sectorSize != 0) {
             toWrite = ((toWrite / sectorSize) + 1) * sectorSize;
@@ -279,7 +281,8 @@ bool BenchmarkEngine::RunSequentialWrite(const std::wstring& filePath, uint64_t 
             m_status.currentIOPS = curIOPS;
             m_status.bytesProcessed = bytesWrittenTotal;
             m_status.elapsedSeconds = elapsed;
-            m_status.progress = (std::min)(100.0f, static_cast<float>((bytesWrittenTotal * 100.0) / targetSize));
+            float pct = static_cast<float>((bytesWrittenTotal * 100.0) / targetSize);
+            m_status.progress = (pct > 100.0f) ? 100.0f : pct;
             m_status.history.push_back({elapsed, instMBps, avgMBps, curIOPS});
 
             lastSampleTime = now;
@@ -341,7 +344,9 @@ bool BenchmarkEngine::RunSequentialRead(const std::wstring& filePath, uint64_t t
     uint32_t ioCount = 0;
 
     while (bytesReadTotal < targetSize && !m_shouldStop.load()) {
-        DWORD toRead = static_cast<DWORD>((std::min)<uint64_t>(blockSize, targetSize - bytesReadTotal));
+        uint64_t remaining = targetSize - bytesReadTotal;
+        uint64_t chunk = (static_cast<uint64_t>(blockSize) < remaining) ? static_cast<uint64_t>(blockSize) : remaining;
+        DWORD toRead = static_cast<DWORD>(chunk);
         if (toRead % sectorSize != 0) {
             toRead = ((toRead / sectorSize) + 1) * sectorSize;
         }
@@ -372,7 +377,8 @@ bool BenchmarkEngine::RunSequentialRead(const std::wstring& filePath, uint64_t t
             m_status.currentIOPS = curIOPS;
             m_status.bytesProcessed = bytesReadTotal;
             m_status.elapsedSeconds = elapsed;
-            m_status.progress = (std::min)(100.0f, static_cast<float>((bytesReadTotal * 100.0) / targetSize));
+            float pct = static_cast<float>((bytesReadTotal * 100.0) / targetSize);
+            m_status.progress = (pct > 100.0f) ? 100.0f : pct;
             m_status.history.push_back({elapsed, instMBps, avgMBps, curIOPS});
 
             lastSampleTime = now;
@@ -478,7 +484,8 @@ bool BenchmarkEngine::RunRandom4KWrite(const std::wstring& filePath, uint64_t ta
             m_status.currentIOPS = instIOPS;
             m_status.bytesProcessed = totalBytesWritten;
             m_status.elapsedSeconds = elapsed;
-            m_status.progress = (std::min)(100.0f, static_cast<float>((elapsed * 100.0) / durationSeconds));
+            float pct = static_cast<float>((elapsed * 100.0) / durationSeconds);
+            m_status.progress = (pct > 100.0f) ? 100.0f : pct;
             m_status.history.push_back({elapsed, instMBps, avgMBps, instIOPS});
 
             lastSampleTime = now;
@@ -580,7 +587,8 @@ bool BenchmarkEngine::RunRandom4KRead(const std::wstring& filePath, uint64_t tar
             m_status.currentIOPS = instIOPS;
             m_status.bytesProcessed = totalBytesRead;
             m_status.elapsedSeconds = elapsed;
-            m_status.progress = (std::min)(100.0f, static_cast<float>((elapsed * 100.0) / durationSeconds));
+            float pct = static_cast<float>((elapsed * 100.0) / durationSeconds);
+            m_status.progress = (pct > 100.0f) ? 100.0f : pct;
             m_status.history.push_back({elapsed, instMBps, avgMBps, instIOPS});
 
             lastSampleTime = now;
