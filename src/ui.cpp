@@ -439,11 +439,11 @@ void MainWindow::OnPaint() {
 
         // Area under curve
         GraphicsPath fillPath;
-        fillPath.AddLine(plotX, plotY + plotH, pts[0].X, pts[0].Y);
+        fillPath.AddLine(PointF(plotX, plotY + plotH), pts[0]);
         for (size_t i = 1; i < pts.size(); ++i) {
             fillPath.AddLine(pts[i - 1], pts[i]);
         }
-        fillPath.AddLine(pts.back().X, plotY + plotH);
+        fillPath.AddLine(pts.back(), PointF(pts.back().X, plotY + plotH));
         fillPath.CloseFigure();
 
         SolidBrush areaBrush(Color(35, 88, 166, 255));
